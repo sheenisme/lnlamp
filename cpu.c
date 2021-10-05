@@ -31,6 +31,9 @@
 #include "schedule.h"
 #include "util.h"
 
+// 引入混合精度的头文件
+#include "amp.h"
+
 /* Representation of a statement inside a generated AST.
  *
  * "stmt" refers to the original statement.
@@ -774,6 +777,10 @@ static __isl_give isl_printer *print_cpu_with_schedule(
 	p = isl_printer_end_line(p);
 
 	p = ppcg_set_macro_names(p);
+
+	// 加入混合精度的宏定义
+	p = amp_print_macros(p);
+
 	p = ppcg_print_exposed_declarations(p, ps);
 	hidden = ppcg_scop_any_hidden_declarations(ps);
 	if (hidden) {

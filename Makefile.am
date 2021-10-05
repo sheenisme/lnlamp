@@ -60,7 +60,9 @@ ppcg_SOURCES = \
 	print.h \
 	util.c \
 	util.h \
-	version.c
+	version.c \
+	amp.c \
+	amp.h 
 
 TESTS = @extra_tests@
 EXTRA_TESTS = opencl_test.sh polybench_test.sh
