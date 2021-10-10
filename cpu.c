@@ -89,6 +89,11 @@ static FILE *get_output_file(const char *input, const char *output)
 		return NULL;
 	}
 
+	// 在文件开始加入AMP相关的头文件
+	fprintf(file, "#include <assert.h>\n");
+	fprintf(file, "#include <stdio.h>\n");
+	fprintf(file, "#include \"amp_utilities.h\"\n");
+
 	return file;
 }
 
@@ -435,12 +440,60 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
 	map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
 	map = isl_map_reverse(map);
 	iterator_map = isl_pw_multi_aff_from_map(map);
-	stmt->ref2expr = pet_stmt_build_ast_exprs(stmt->stmt, build,
-				    &pullback_index, iterator_map, NULL, NULL);
+	stmt->ref2expr = pet_stmt_build_ast_exprs(stmt->stmt, build, &pullback_index, iterator_map, NULL, NULL);
 	isl_pw_multi_aff_free(iterator_map);
 
 	id = isl_id_alloc(isl_ast_node_get_ctx(node), NULL, stmt);
 	id = isl_id_set_free_user(id, &ppcg_stmt_free);
+	return isl_ast_node_set_annotation(node, id);
+error:
+	ppcg_stmt_free(stmt);
+	return isl_ast_node_free(node);
+}
+
+/* Transform the accesses in the statement associated to the domain
+ * called by "node" to refer to the AST loop iterators, construct
+ * corresponding AST expressions using "build",
+ * collect them in a ppcg_stmt and annotate the node with the ppcg_stmt.
+ */
+static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node *node, __isl_keep isl_ast_build *build, void *user)
+{
+	amp_prog *prog = user;
+	struct ppcg_scop *scop = prog->scop;
+	isl_ast_expr *expr, *arg;
+	isl_ctx *ctx;
+	isl_id *id;
+	isl_map *map;
+	isl_pw_multi_aff *iterator_map;
+	struct ppcg_stmt *stmt;
+
+	ctx = isl_ast_node_get_ctx(node);
+	stmt = isl_calloc_type(ctx, struct ppcg_stmt);
+	if (!stmt)
+		goto error;
+
+	expr = isl_ast_node_user_get_expr(node);
+	arg = isl_ast_expr_get_op_arg(expr, 0);
+	isl_ast_expr_free(expr);
+	id = isl_ast_expr_get_id(arg);
+	isl_ast_expr_free(arg);
+	stmt->stmt = find_stmt(scop, id);
+	isl_id_free(id);
+	if (!stmt->stmt)
+		goto error;
+
+	map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
+	map = isl_map_reverse(map);
+	iterator_map = isl_pw_multi_aff_from_map(map);
+	stmt->ref2expr = pet_stmt_build_ast_exprs(stmt->stmt, build, &pullback_index, iterator_map, NULL, NULL);
+	isl_pw_multi_aff_free(iterator_map);
+
+	id = isl_id_alloc(isl_ast_node_get_ctx(node), NULL, stmt);
+	id = isl_id_set_free_user(id, &ppcg_stmt_free);
+
+	/** Build AST expressions for the amp array sizes of all arrays in "prog" **/
+	node = amp_build_array_bounds(node, prog, build);
+
 	return isl_ast_node_set_annotation(node, id);
 error:
 	ppcg_stmt_free(stmt);
@@ -589,6 +642,73 @@ static __isl_give isl_printer *print_scop(struct ppcg_scop *scop,
 							&print_for, NULL);
 
 	p = cpu_print_macros(p, tree);
+
+	p = isl_ast_node_print(tree, p, print_options);
+
+	isl_ast_node_free(tree);
+
+	return p;
+error:
+	isl_schedule_free(schedule);
+	isl_printer_free(p);
+	return NULL;
+}
+
+/* Code generate the scop 'scop' using "schedule"
+ * and print the corresponding C code to 'p'.
+ */
+/** 待完善 **/
+static __isl_give isl_printer *print_scop_with_amp(__isl_take isl_schedule *schedule, __isl_take isl_printer *p, struct ppcg_options *options, amp_prog *prog)
+{
+	struct ppcg_scop *scop = prog->scop;
+	isl_ctx *ctx = isl_printer_get_ctx(p);
+	isl_ast_build *build;
+	isl_ast_print_options *print_options;
+	isl_ast_node *tree;
+	isl_id_list *iterators;
+	struct ast_build_userinfo build_info;
+	int depth;
+
+	depth = 0;
+	if (isl_schedule_foreach_schedule_node_top_down(schedule, &update_depth, &depth) < 0)
+		goto error;
+
+	build = isl_ast_build_alloc(ctx);
+	iterators = ppcg_scop_generate_names(scop, depth, "c");
+	build = isl_ast_build_set_iterators(build, iterators);
+	/**-- 修改了哈 --**/
+	build = isl_ast_build_set_at_each_domain(build, &at_each_domain_with_amp, prog);
+
+	if (options->openmp)
+	{
+		if (init_build_info(&build_info, scop, schedule) < 0)
+			build = isl_ast_build_free(build);
+
+		build = isl_ast_build_set_before_each_for(build, &ast_build_before_for, &build_info);
+		build = isl_ast_build_set_after_each_for(build, &ast_build_after_for, &build_info);
+	}
+
+	tree = isl_ast_build_node_from_schedule(build, schedule);
+	isl_ast_build_free(build);
+
+	if (options->openmp)
+		clear_build_info(&build_info);
+
+	print_options = isl_ast_print_options_alloc(ctx);
+	print_options = isl_ast_print_options_set_print_user(print_options,
+														 &print_user, NULL);
+
+	print_options = isl_ast_print_options_set_print_for(print_options,
+														&print_for, NULL);
+
+	p = cpu_print_macros(p, tree);
+
+	// 加入混合精度的宏定义
+	p = amp_print_macros(p);
+	// 打印低精度数组
+	p = declare_amp_lower_precision_arrays(p, prog);
+	p = allocate_amp_lower_precision_arrays(p, prog);
+
 	p = isl_ast_node_print(tree, p, print_options);
 
 	isl_ast_node_free(tree);
@@ -777,10 +897,6 @@ static __isl_give isl_printer *print_cpu_with_schedule(
 	p = isl_printer_end_line(p);
 
 	p = ppcg_set_macro_names(p);
-
-	// 加入混合精度的宏定义
-	p = amp_print_macros(p);
-
 	p = ppcg_print_exposed_declarations(p, ps);
 	hidden = ppcg_scop_any_hidden_declarations(ps);
 	if (hidden) {
@@ -812,19 +928,80 @@ __isl_give isl_printer *print_cpu(__isl_take isl_printer *p,
 	return print_cpu_with_schedule(p, ps, schedule, options);
 }
 
+/* Generate CPU code for the scop "ps" using "schedule" and
+ * print the corresponding C code to "p", including variable declarations.
+ */
+/** 自动混合精度 打印代码**/
+/** 待修改 ***/
+static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __isl_take isl_schedule *schedule, struct ppcg_options *options, amp_prog *prog)
+{
+	struct ppcg_scop *ps = prog->scop;
+	int hidden;
+	isl_set *context;
+
+	p = isl_printer_start_line(p);
+	p = isl_printer_print_str(p, "/* ppcg generated CPU code with AMP */");
+	p = isl_printer_end_line(p);
+
+	p = isl_printer_start_line(p);
+	p = isl_printer_end_line(p);
+
+	p = ppcg_set_macro_names(p);
+	p = ppcg_print_exposed_declarations(p, ps);
+	hidden = ppcg_scop_any_hidden_declarations(ps);
+	if (hidden)
+	{
+		p = ppcg_start_block(p);
+		p = ppcg_print_hidden_declarations(p, ps);
+	}
+
+	context = isl_set_copy(ps->context);
+	context = isl_set_from_params(context);
+	schedule = isl_schedule_insert_context(schedule, context);
+	if (options->debug->dump_final_schedule)
+		isl_schedule_dump(schedule);
+
+	// 打印AST ?
+	p = print_scop_with_amp(schedule, p, options, prog);
+
+	if (hidden)
+		p = ppcg_end_block(p);
+
+	// 用完释放掉amp_prog
+	amp_prog_free(prog);
+	return p;
+}
+
 /* Generate CPU code for "scop" and print it to "p".
  *
  * First obtain a schedule for "scop" and then print code for "scop"
  * using that schedule.
+ * 
+ * 待进一步修改和完善。
  */
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
+	amp_prog *prog;
+	isl_ctx *ctx;
 	isl_schedule *schedule;
 
+	if (!scop)
+		return isl_printer_free(p);
+
+	/** 这里进行amp的调度 **/
 	schedule = get_schedule(scop, options);
 
-	return print_cpu_with_schedule(p, scop, schedule, options);
+	ctx = isl_printer_get_ctx(p);
+	prog = amp_prog_alloc(ctx, scop);
+
+	if (!prog)
+	{
+		amp_prog_free(prog);
+		return print_cpu_with_schedule(p, scop, schedule, options);
+	}
+
+	return print_cpu_with_amp(p, schedule, options, prog);
 }
 
 /* Wrapper around generate for use as a ppcg_transform callback.
@@ -858,3 +1035,4 @@ int generate_cpu(isl_ctx *ctx, struct ppcg_options *options,
 
 	return r;
 }
+
