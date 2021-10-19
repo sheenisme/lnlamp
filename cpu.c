@@ -982,6 +982,8 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
+	// #define DEBUG
+
 	amp_prog *prog;
 	isl_ctx *ctx;
 	isl_schedule *schedule;
@@ -989,11 +991,23 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	if (!scop)
 		return isl_printer_free(p);
 
-	/** 这里进行amp的调度 **/
+	// 这里进行PPCG的调度
 	schedule = get_schedule(scop, options);
+#ifdef DEBUG
+	printf("@DEBUG: \n       ppcg calcu schedule is: \n");
+	isl_schedule_dump(schedule);
+	printf("\n\n");
+#endif // DEBUG
 
 	ctx = isl_printer_get_ctx(p);
 	prog = amp_prog_alloc(ctx, scop);
+	// amp 再调度
+	schedule = amp_schedule_again(ctx, prog, schedule);
+#ifdef DEBUG
+	printf("@DEBUG: \n       amp again calcu schedule is: \n");
+	isl_schedule_dump(schedule);
+	printf("\n\n");
+#endif // DEBUG
 
 	if (!prog)
 	{

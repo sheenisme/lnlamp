@@ -14,6 +14,7 @@
 #include <isl/schedule_node.h>
 #include <isl/options.h>
 #include <isl/ast.h>
+#include <isl/val.h>
 #include <isl/ast_build.h>
 
 #include "amp.h"
@@ -126,7 +127,7 @@ static __isl_give isl_set *amp_compute_extent(struct pet_array *array, __isl_kee
  * That is, is "array" a scalar that is never possibly written to.
  * An array containing structures is never considered to be a scalar.
  */
-static int is_read_only_scalar(struct amp_array_info *array, struct amp_prog *prog)
+static int is_read_only_scalar(struct amp_array_info *array, amp_prog *prog)
 {
     isl_set *space;
     isl_union_map *write;
@@ -169,7 +170,7 @@ static isl_bool only_fixed_element_accessed(struct amp_array_info *array)
  * i.e., if the array is a scalar, we check whether it is read-only.
  * We also check whether the array is accessed at all.
  */
-static isl_stat extract_array_info(struct amp_prog *prog, struct amp_array_info *info, struct pet_array *pa, __isl_keep isl_union_set *arrays)
+static isl_stat extract_array_info(amp_prog *prog, struct amp_array_info *info, struct pet_array *pa, __isl_keep isl_union_set *arrays)
 {
     int empty;
     const char *name;
@@ -232,7 +233,7 @@ static isl_stat extract_array_info(struct amp_prog *prog, struct amp_array_info 
  * considered coincident so we should indeed remove those constraints
  * from the order constraints.
  */
-static __isl_give isl_union_map *remove_independences(struct amp_prog *prog, struct amp_array_info *array, __isl_take isl_union_map *order)
+static __isl_give isl_union_map *remove_independences(amp_prog *prog, struct amp_array_info *array, __isl_take isl_union_map *order)
 {
     int i;
 
@@ -363,7 +364,7 @@ static isl_stat collect_array_info(amp_prog *prog)
     return r;
 }
 
-static void free_array_info(struct amp_prog *prog)
+static void free_array_info(amp_prog *prog)
 {
     int i;
 
@@ -693,7 +694,7 @@ static struct amp_stmt *extract_stmts(isl_ctx *ctx, struct ppcg_scop *scop,
  * arrays that are not local to "prog" and remove those elements that
  * are definitely killed or definitely written by "prog".
  */
-static __isl_give isl_union_set *compute_may_persist(struct amp_prog *prog)
+static __isl_give isl_union_set *compute_may_persist(amp_prog *prog)
 {
     int i;
     isl_union_set *may_persist, *killed;
@@ -722,7 +723,7 @@ static __isl_give isl_union_set *compute_may_persist(struct amp_prog *prog)
     return may_persist;
 }
 
-void *amp_prog_free(struct amp_prog *prog)
+void *amp_prog_free(amp_prog *prog)
 {
     if (!prog)
         return NULL;
@@ -844,7 +845,7 @@ int amp_array_requires_allocation(struct amp_array_info *array)
  * on the host.
  * "node" is freed in case of error.
  */
-__isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, struct amp_prog *prog, __isl_keep isl_ast_build *build)
+__isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, amp_prog *prog, __isl_keep isl_ast_build *build)
 {
     int i;
 
@@ -979,4 +980,231 @@ __isl_give isl_printer *allocate_amp_lower_precision_arrays(__isl_take isl_print
     p = isl_printer_end_line(p);
 
     return p;
+}
+
+/*
+// 将strRes中的t替换为s，替换成功返回1，否则返回0。
+int strReplace(char strRes[], char from[], char to[])
+{
+    int i, flag = 0;
+    char *p, *q, *ts;
+    for (i = 0; strRes[i]; ++i)
+    {
+        if (strRes[i] == from[0])
+        {
+            p = strRes + i;
+            q = from;
+            while (*q && (*p++ == *q++))
+                ;
+            if (*q == '\0')
+            {
+                ts = (char *)malloc(strlen(strRes) + 1);
+                strcpy(ts, p);
+                strRes[i] = '\0';
+                strcat(strRes, to);
+                strcat(strRes, ts);
+                free(ts);
+                flag = 1;
+            }
+        }
+    }
+    return flag;
+}
+
+// 增加混合精度的混合因子到context中
+
+__isl_give isl_schedule *amp_add_mixing_factor_context(isl_ctx *ctx, __isl_take isl_set *context, __isl_keep isl_schedule *sched)
+{
+    isl_schedule *schedule, *sched_1, *sched_2;
+    isl_union_set *uset;
+
+    if (!sched && !context)
+        return NULL;
+
+    char *str_1 = isl_schedule_to_str(isl_schedule_copy(sched));
+    char *str_2 = isl_schedule_to_str(isl_schedule_copy(sched));
+    isl_schedule_free(sched);
+
+#ifdef DEBUG
+    printf("@DEBUG: \n       str_1 is: %s\n", str_1);
+    printf("@DEBUG: \n       str_2 is: %s\n", str_2);
+#endif // DEBUG
+
+    if (!strReplace(str_1, "31", "15"))
+        printf("字符串替换出现异常！！！\n");
+    sched_1 = isl_schedule_read_from_str(ctx, str_1);
+
+    if (!strReplace(str_2, "0 <= t", "16 <= t"))
+        printf("字符串替换出现异常！！！\n");
+    sched_2 = isl_schedule_read_from_str(ctx, str_2);
+
+#ifdef DEBUG
+    printf("@DEBUG: \n       schedule is: %s\n", isl_schedule_to_str(sched_1));
+    printf("@DEBUG: \n       schedule is: %s\n", isl_schedule_to_str(sched_2));
+#endif // DEBUG
+
+    schedule = isl_schedule_sequence(sched_1, sched_2);
+    //isl_schedule_free(sched_1);
+    //isl_schedule_free(sched_2);
+
+    return schedule;
+}
+*/
+
+// amp修改调度
+__isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *context, __isl_keep isl_schedule *sched)
+{
+    // #define DEBUG
+
+    isl_schedule_node *node;
+    isl_basic_set_list *bset_list;
+    isl_union_set *domain, *uset1, *uset2;
+    isl_union_set_list *uset_list;
+    isl_set *set;
+    isl_size basic_set_list_dim, constraint_list_dim;
+    unsigned long rate = 2;
+
+    // 获取domain(isl_schedule -> isl_union_set)
+    domain = isl_schedule_get_domain(sched);
+    // 获取调度树的 node 结点
+    // node = isl_schedule_node_from_domain(isl_union_set_copy(domain)); 这里是不对的，具体区别还不确定。
+    node = isl_schedule_get_root(sched);
+    // 释放之前的调度
+    isl_schedule_free(sched);
+    // isl_union_set -> isl_set
+    set = isl_set_from_union_set(domain);
+    // isl_set -> isl_basic_set_list
+    bset_list = isl_set_get_basic_set_list(set);
+    basic_set_list_dim = isl_basic_set_list_n_basic_set(bset_list);
+    // 初始化isl_union_set_list
+    uset_list = isl_union_set_list_alloc(ctx, 2 * (int)basic_set_list_dim);
+
+#ifdef DEBUG
+    printf("@DEBUG: \n       domain、node、set 、basci_set_list、basic_set_list_dim is:\n");
+    isl_union_set_dump(domain);
+    isl_schedule_node_dump(node);
+    isl_set_dump(set);
+    isl_basic_set_list_dump(bset_list);
+    printf("basic_set_list_dim is :%d \n\n", basic_set_list_dim);
+#endif
+    isl_set_free(set);
+    for (isl_size i = 0; i < basic_set_list_dim; ++i)
+    {
+        // isl_basic_set_list -> isl_basic_set
+        isl_basic_set *bset = isl_basic_set_list_get_basic_set(bset_list, i);
+        isl_basic_set *bset_new = isl_basic_set_list_get_basic_set(bset_list, i);
+        isl_basic_set_list_free(bset_list);
+        // isl_basic_set -> isl_constraint_list
+        isl_constraint_list *cons_list = isl_basic_set_get_constraint_list(bset);
+        // isl_constraint_list *cons_list_new = isl_basic_set_get_constraint_list(bset);
+        // isl_basic_set_free(bset);
+        constraint_list_dim = isl_constraint_list_n_constraint(cons_list);
+
+#ifdef DEBUG
+        printf("@DEBUG: \n       basci_set、isl_constraint_list、constraint_list_dim is:\n");
+        isl_basic_set_dump(bset);
+        isl_constraint_list_dump(cons_list);
+        printf("constraint_list_dim is:%d \n\n", constraint_list_dim);
+#endif
+        // 依次获取，修改约束列表
+        for (isl_size j = 0; j < constraint_list_dim; ++j)
+        {
+            // isl_constraint_list -> isl_constraint
+            isl_constraint *c = isl_constraint_list_get_constraint(cons_list, j);
+            // isl_constraint_dump(c);
+
+            if (j == 0) // 如果是amp的前面的一个原始计算
+            {
+                // create new val in new constraint
+                isl_val *v = isl_constraint_get_constant_val(c);
+                // calcute v1
+                isl_constraint *c1 = isl_constraint_list_get_constraint(cons_list, j + 1);
+                isl_val *v1 = isl_constraint_get_constant_val(c1);
+                v1 = isl_val_add_ui(v1, 1);
+                v1 = isl_val_div_ui(v1, rate);
+                // sub v1 in v
+                v = isl_val_sub(v, v1);
+                isl_constraint *c2 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
+                // cons_list_new = isl_constraint_list_drop(cons_list_new, j, 1);
+                // cons_list_new = isl_constraint_list_add(cons_list_new, isl_constraint_copy(c2));
+                bset_new = isl_basic_set_add_constraint(bset_new, c2);
+                isl_constraint_free(c1);
+
+#ifdef DEBUG
+                printf("@DEBUG: \n       created the new val 、isl_constraint、isl_constraint_list、isl_basic_set is:\n");
+                // isl_val_dump(v);
+                // isl_constraint_dump(c2);
+                // isl_constraint_list_dump(cons_list_new);
+                isl_basic_set_dump(bset_new);
+                printf(" when j == %d \n\n", j);
+#endif
+            }
+            else if (j == 1) // 如果是amp的前面的一个原始计算
+            {
+                // create new val of origion
+                isl_val *v = isl_constraint_get_constant_val(c);
+                v = isl_val_add_ui(v, 1);
+                v = isl_val_div_ui(v, rate);
+                v = isl_val_sub_ui(v, 1);
+                isl_constraint *c3 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
+                // cons_list = isl_constraint_list_drop(cons_list, j, 1);
+                // cons_list = isl_constraint_list_add(cons_list, isl_constraint_copy(c3));
+                bset = isl_basic_set_add_constraint(bset, c3);
+
+#ifdef DEBUG
+                printf("@DEBUG: \n       new val and revised isl_constraint、isl_constraint_list、isl_basic_set is:\n");
+                // isl_val_dump(v);
+                // isl_constraint_dump(c3);
+                // isl_constraint_list_dump(cons_list);
+                isl_basic_set_dump(bset);
+                printf(" when j == %d \n\n", j);
+#endif
+            }
+            isl_constraint_free(c);
+        }
+        // 释放掉constraint list
+        isl_constraint_list_free(cons_list);
+
+        // isl_basic_set -> isl_set
+        uset1 = isl_union_set_from_basic_set(bset);
+        uset2 = isl_union_set_from_basic_set(bset_new);
+        uset_list = isl_union_set_list_add(uset_list, uset1);
+        uset_list = isl_union_set_list_add(uset_list, uset2);
+#ifdef DEBUG
+        printf("@DEBUG: \n       the two isl_union_set and the isl_union_set_list is:\n");
+        // isl_union_set_dump(uset1);
+        // isl_union_set_dump(uset2);
+        isl_union_set_list_dump(uset_list);
+        printf("when basic_set_list_dim = %d\n\n", basic_set_list_dim);
+#endif
+    }
+
+    node = isl_schedule_node_child(node, 0);
+    node = isl_schedule_node_insert_sequence(node, uset_list);
+    sched = isl_schedule_node_get_schedule(node);
+    isl_schedule_node_free(node);
+
+#ifdef DEBUG
+    printf("@DEBUG: \n       amp generate's schedule  is:  \n");
+    isl_schedule_dump(sched);
+    printf("\n\n");
+#endif
+
+    return sched;
+}
+
+/**
+ * Compute a new schedule based on the schd 
+ */
+__isl_give isl_schedule *amp_schedule_again(isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *schedule)
+{
+    if ((!schedule) || (!prog))
+        return NULL;
+
+    schedule = get_amp_schedule(ctx, prog->context, schedule);
+
+    // if (prog->scop->options->tile)
+    //     printf("tile 时候，amp再进行一次调度！\n");
+
+    return schedule;
 }

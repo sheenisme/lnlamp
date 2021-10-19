@@ -19,7 +19,7 @@ char *amp_error_string(int error)
     index = error;
 
 #ifdef DEBUG
-    printf("error ID is %d \n", error);
+    printf("@DEBUG: \n       error ID is %d \n", error);
 #endif
 
     return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
@@ -29,7 +29,7 @@ char *amp_error_string(int error)
 int ampMalloc(void **p, int size)
 {
 #ifdef DEBUG
-    printf("will malloc the size of memory is : %d \n", size);
+    printf("@DEBUG: \n       will malloc the size of memory is : %d \n", size);
 #endif
 
     if ((size > 0) && (p != NULL))
@@ -39,7 +39,7 @@ int ampMalloc(void **p, int size)
     else
     {
 #ifdef DEBUG
-        printf("ampMalloc meets some Errors, may the size <= 0 or the pointer is null, please check.\n");
+        printf("@DEBUG: \n       ampMalloc meets some Errors, may the size <= 0 or the pointer is null, please check.\n");
 #endif
         return AMP_ALLOC_MEMOEY_FAILURE;
     }
