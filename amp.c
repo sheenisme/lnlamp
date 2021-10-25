@@ -1051,24 +1051,62 @@ __isl_give isl_schedule *amp_add_mixing_factor_context(isl_ctx *ctx, __isl_take 
 }
 */
 
+// 检查rate的合法性
+isl_bool amp_check_rate(__isl_keep isl_constraint_list *cons_list, unsigned long rate)
+{
+    // #define DEBUG
+
+    // d is the abs value of the sub of v0 and v1
+    unsigned long d;
+    isl_size constraint_list_dim = isl_constraint_list_n_constraint(cons_list);
+    if (constraint_list_dim)
+    {
+        // isl_constraint_list -> isl_constraint
+        isl_constraint *c0 = isl_constraint_list_get_constraint(cons_list, 0);
+        isl_constraint *c1 = isl_constraint_list_get_constraint(cons_list, 1);
+        isl_val *v0 = isl_constraint_get_constant_val(c0);
+        isl_val *v1 = isl_constraint_get_constant_val(c1);
+        isl_val *v = isl_val_sub(v1, v0);
+        v = isl_val_abs(v);
+        v = isl_val_add_ui(v, 1);
+        d = (unsigned long)isl_val_get_num_si(v);
+
+#ifdef DEBUG
+        printf("@DEBUG: \n        d rate is: %ld 、%ld \n\n", d, rate);
+#endif // DEBUG
+        isl_constraint_free(c0);
+        isl_constraint_free(c1);
+        isl_val_free(v);
+        if (!(d % rate))
+        {
+            return isl_bool_true;
+        }
+    }
+    printf("\n\033[31m@ERROR:\n       the number of the rate is incorrect! this time the rate is %ld, \n       but the abs of the sub of v0 and v1 is %ld !!!\n\n\033[0m", rate, d);
+    return isl_bool_error;
+}
+
 // amp修改调度
-__isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *context, __isl_keep isl_schedule *sched)
+__isl_give isl_schedule *get_amp_schedule(__isl_keep isl_ctx *ctx, __isl_take isl_schedule *sched, unsigned long rate)
 {
     // #define DEBUG
 
     isl_schedule_node *node;
-    isl_basic_set_list *bset_list;
-    isl_union_set *domain, *uset1, *uset2;
     isl_union_set_list *uset_list;
+    isl_union_set *domain, *uset1, *uset2;
     isl_set *set;
+    isl_basic_set_list *bset_list;
+    isl_basic_set *bset, *bset_new;
+    isl_constraint_list *cons_list;
+    isl_constraint *c, *c1, *c2, *c3;
     isl_size basic_set_list_dim, constraint_list_dim;
-    unsigned long rate = 2;
+    // unsigned long rate = 2;
 
-    // 获取domain(isl_schedule -> isl_union_set)
-    domain = isl_schedule_get_domain(sched);
     // 获取调度树的 node 结点
     // node = isl_schedule_node_from_domain(isl_union_set_copy(domain)); 这里是不对的，具体区别还不确定。
     node = isl_schedule_get_root(sched);
+    // 获取domain(isl_schedule -> isl_union_set)
+    domain = isl_schedule_get_domain(sched);
     // 释放之前的调度
     isl_schedule_free(sched);
     // isl_union_set -> isl_set
@@ -1091,11 +1129,11 @@ __isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *cont
     for (isl_size i = 0; i < basic_set_list_dim; ++i)
     {
         // isl_basic_set_list -> isl_basic_set
-        isl_basic_set *bset = isl_basic_set_list_get_basic_set(bset_list, i);
-        isl_basic_set *bset_new = isl_basic_set_list_get_basic_set(bset_list, i);
+        bset = isl_basic_set_list_get_basic_set(bset_list, i);
+        bset_new = isl_basic_set_list_get_basic_set(bset_list, i);
         isl_basic_set_list_free(bset_list);
         // isl_basic_set -> isl_constraint_list
-        isl_constraint_list *cons_list = isl_basic_set_get_constraint_list(bset);
+        cons_list = isl_basic_set_get_constraint_list(bset);
         // isl_constraint_list *cons_list_new = isl_basic_set_get_constraint_list(bset);
         // isl_basic_set_free(bset);
         constraint_list_dim = isl_constraint_list_n_constraint(cons_list);
@@ -1110,21 +1148,27 @@ __isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *cont
         for (isl_size j = 0; j < constraint_list_dim; ++j)
         {
             // isl_constraint_list -> isl_constraint
-            isl_constraint *c = isl_constraint_list_get_constraint(cons_list, j);
+            c = isl_constraint_list_get_constraint(cons_list, j);
             // isl_constraint_dump(c);
 
             if (j == 0) // 如果是amp的前面的一个原始计算
             {
+                if (amp_check_rate(cons_list, rate) == isl_bool_error)
+                {
+                    printf("error!!!");
+                    goto error;
+                }
+
                 // create new val in new constraint
                 isl_val *v = isl_constraint_get_constant_val(c);
                 // calcute v1
-                isl_constraint *c1 = isl_constraint_list_get_constraint(cons_list, j + 1);
+                c1 = isl_constraint_list_get_constraint(cons_list, j + 1);
                 isl_val *v1 = isl_constraint_get_constant_val(c1);
                 v1 = isl_val_add_ui(v1, 1);
                 v1 = isl_val_div_ui(v1, rate);
                 // sub v1 in v
                 v = isl_val_sub(v, v1);
-                isl_constraint *c2 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
+                c2 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
                 // cons_list_new = isl_constraint_list_drop(cons_list_new, j, 1);
                 // cons_list_new = isl_constraint_list_add(cons_list_new, isl_constraint_copy(c2));
                 bset_new = isl_basic_set_add_constraint(bset_new, c2);
@@ -1146,7 +1190,7 @@ __isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *cont
                 v = isl_val_add_ui(v, 1);
                 v = isl_val_div_ui(v, rate);
                 v = isl_val_sub_ui(v, 1);
-                isl_constraint *c3 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
+                c3 = isl_constraint_set_constant_val(isl_constraint_copy(c), v);
                 // cons_list = isl_constraint_list_drop(cons_list, j, 1);
                 // cons_list = isl_constraint_list_add(cons_list, isl_constraint_copy(c3));
                 bset = isl_basic_set_add_constraint(bset, c3);
@@ -1191,17 +1235,46 @@ __isl_give isl_schedule *get_amp_schedule(isl_ctx *ctx, __isl_take isl_set *cont
 #endif
 
     return sched;
+error:
+    printf("error!!!");
+    isl_constraint_free(c);
+    isl_constraint_list_free(cons_list);
+    isl_basic_set_free(bset);
+    isl_basic_set_free(bset_new);
+    isl_union_set_list_free(uset_list);
+    isl_union_set_free(uset1);
+    isl_union_set_free(uset2);
+    isl_schedule_node_free(node);
+    return NULL;
 }
 
 /**
  * Compute a new schedule based on the schd 
  */
-__isl_give isl_schedule *amp_schedule_again(isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *schedule)
+__isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *schedule)
 {
+    unsigned long rate;
+
     if ((!schedule) || (!prog))
         return NULL;
 
-    schedule = get_amp_schedule(ctx, prog->context, schedule);
+    // 如果不进行自动混合精度，这个检查是多余的，主要是检查确保参数的正确性
+    if (!prog->scop->options->automatic_mixed_precision)
+    {
+        return NULL;
+    }
+
+    // 获取混合精度的比例
+    rate = (unsigned long)prog->scop->options->automatic_mixed_precision_rate;
+
+    // 如果比例 <= 0, 则不进行混合精度，将原始调度返回。
+    if (rate <= 0)
+    {
+        printf("\n\033[31m@ERROR:\n       automatic mixed precision rate is 0 , that is incorrect.\n\n\033[0m");
+        return schedule;
+    }
+
+    schedule = get_amp_schedule(ctx, schedule, rate);
 
     // if (prog->scop->options->tile)
     //     printf("tile 时候，amp再进行一次调度！\n");

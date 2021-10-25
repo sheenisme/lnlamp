@@ -982,40 +982,57 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
-	// #define DEBUG
+	/* 调试显示参数 
+#ifdef DEBUG
+	printf("\n@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
+	printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
+	printf("              the amp rate : %d ( e.g: 2 means - the higher precision accounts for 1/2 )\n", options->automatic_mixed_precision_rate);
+	printf("\n\n");
+#endif // DEBUG
+	*/
 
-	amp_prog *prog;
-	isl_ctx *ctx;
 	isl_schedule *schedule;
-
-	if (!scop)
-		return isl_printer_free(p);
-
-	// 这里进行PPCG的调度
-	schedule = get_schedule(scop, options);
-#ifdef DEBUG
-	printf("@DEBUG: \n       ppcg calcu schedule is: \n");
-	isl_schedule_dump(schedule);
-	printf("\n\n");
-#endif // DEBUG
-
-	ctx = isl_printer_get_ctx(p);
-	prog = amp_prog_alloc(ctx, scop);
-	// amp 再调度
-	schedule = amp_schedule_again(ctx, prog, schedule);
-#ifdef DEBUG
-	printf("@DEBUG: \n       amp again calcu schedule is: \n");
-	isl_schedule_dump(schedule);
-	printf("\n\n");
-#endif // DEBUG
-
-	if (!prog)
+	// 如果进行自动混合精度
+	if (options->automatic_mixed_precision)
 	{
-		amp_prog_free(prog);
-		return print_cpu_with_schedule(p, scop, schedule, options);
-	}
+#define DEBUG
 
-	return print_cpu_with_amp(p, schedule, options, prog);
+		amp_prog *prog;
+		isl_ctx *ctx;
+		if (!scop)
+			return isl_printer_free(p);
+
+		// 这里先进行PPCG的调度
+		schedule = get_schedule(scop, options);
+#ifdef DEBUG
+		printf("@DEBUG: \n       ppcg calcu schedule is: \n");
+		isl_schedule_dump(schedule);
+		printf("\n\n");
+#endif // DEBUG
+
+		ctx = isl_printer_get_ctx(p);
+		prog = amp_prog_alloc(ctx, scop);
+		// amp 再调度
+		isl_schedule *reschedule = amp_schedule_again(ctx, prog, isl_schedule_copy(schedule));
+		isl_ctx_deref(ctx);
+#ifdef DEBUG
+		printf("@DEBUG: \n       amp again calcu schedule is: \n");
+		isl_schedule_dump(reschedule);
+		printf("\n\n");
+#endif // DEBUG
+
+		if (!prog || !reschedule)
+		{
+			amp_prog_free(prog);
+			return print_cpu_with_schedule(p, scop, schedule, options);
+		}
+		isl_schedule_free(schedule);
+		return print_cpu_with_amp(p, reschedule, options, prog);
+	}
+	// 不进行自动混合精度
+	schedule = get_schedule(scop, options);
+
+	return print_cpu_with_schedule(p, scop, schedule, options);
 }
 
 /* Wrapper around generate for use as a ppcg_transform callback.

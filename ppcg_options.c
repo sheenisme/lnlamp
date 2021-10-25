@@ -99,6 +99,10 @@ ISL_ARG_BOOL(struct ppcg_options, non_negative_parameters, 0,
 ISL_ARG_BOOL(struct ppcg_options, tile, 0, "tile", 0,
 	"perform tiling (C target)")
 ISL_ARG_INT(struct ppcg_options, tile_size, 'S', "tile-size", "size", 32, NULL)
+
+ISL_ARG_BOOL(struct ppcg_options, automatic_mixed_precision, 0, "automatic_mixed_precision", 1, "automatic mixed precision")
+ISL_ARG_INT(struct ppcg_options, automatic_mixed_precision_rate, 'R', "automatic_mixed_precision_rate", "automatic_mixed_precision_rate", 2, "the reciprocal of the proportion of high precision in automatic mixed precision ( e.g: 2 means - the higher precision accounts for 1/2 )")
+
 ISL_ARG_BOOL(struct ppcg_options, isolate_full_tiles, 0, "isolate-full-tiles",
 	0, "isolate full tiles from partial tiles (hybrid tiling)")
 ISL_ARG_STR(struct ppcg_options, sizes, 0, "sizes", "sizes", NULL,

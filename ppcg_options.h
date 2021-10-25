@@ -33,6 +33,10 @@ struct ppcg_options {
 	int tile;
 	int tile_size;
 
+	/* Automatic mixed precision */
+	int automatic_mixed_precision;
+	int automatic_mixed_precision_rate;
+
 	/* Isolate full tiles from partial tiles. */
 	int isolate_full_tiles;
 
