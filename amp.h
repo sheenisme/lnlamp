@@ -3,6 +3,43 @@
 
 #include <isl/ast.h>
 
+/* A group of array references in a kernel that should be handled together.
+ * If private_tile is not NULL, then it is mapped to registers.
+ * Otherwise, if shared_tile is not NULL, it is mapped to shared memory.
+ * Otherwise, it is accessed from global memory.
+ * Note that if both private_tile and shared_tile are set, then shared_tile
+ * is only used inside group_common_shared_memory_tile.
+ */
+struct amp_array_ref_group
+{
+    /* The references in this group access this local array. */
+    struct amp_local_array_info *local_array;
+    /* This is the corresponding array. */
+    struct amp_array_info *array;
+    /* Position of this group in the list of reference groups of array. */
+    int nr;
+
+    /* The following fields are use during the construction of the groups.
+	 * access is the combined access relation relative to the private
+	 * memory tiling.  In particular, the domain of the map corresponds
+	 * to the first thread_depth dimensions of the kernel schedule.
+	 * write is set if any access in the group is a write.
+	 * exact_write is set if all writes are definite writes.
+	 * slice is set if there is at least one access in the group
+	 * that refers to more than one element
+	 * "min_depth" is the minimum of the tile depths and thread_depth.
+	 */
+    isl_map *access;
+    int write;
+    int exact_write;
+    int slice;
+    int min_depth;
+
+    /* References in this group; point to elements of a linked list. */
+    int n_ref;
+    struct amp_stmt_access **refs;
+};
+
 /* An access to an outer array element or an iterator.
  * Accesses to iterators have an access relation that maps to an unnamed space.
  * An access may be both read and write.
@@ -49,6 +86,7 @@ struct amp_stmt
 
     struct amp_stmt_access *accesses;
 };
+
 /* Represents an outer array possibly accessed by a amp_prog.
  */
 struct amp_array_info
@@ -110,6 +148,70 @@ struct amp_array_info
     isl_union_map *dep_order;
 };
 
+/* Internal data structure for gpu_group_references.
+ *
+ * scop represents the input scop.
+ * kernel_depth is the schedule depth where the kernel launch will
+ * be introduced, i.e., it is the depth of the band that is mapped
+ * to blocks.
+ * shared_depth is the schedule depth at which the copying to/from
+ * shared memory is computed.  The copy operation may then
+ * later be hoisted to a higher level.
+ * thread_depth is the schedule depth where the thread mark is located,
+ * i.e., it is the depth of the band that is mapped to threads and also
+ * the schedule depth at which the copying to/from private memory
+ * is computed.  The copy operation may then later be hoisted to
+ * a higher level.
+ * n_thread is the number of schedule dimensions in the band that
+ * is mapped to threads.
+ * privatization lives in the range of thread_sched (i.e., it is
+ * of dimension thread_depth + n_thread) and encodes the mapping
+ * to thread identifiers (as parameters).
+ * host_sched contains the kernel_depth dimensions of the host schedule.
+ * shared_sched contains the first shared_depth dimensions of the
+ * kernel schedule.
+ * copy_sched contains the first thread_depth dimensions of the
+ * kernel schedule.
+ * thread_sched contains the first (thread_depth + n_thread) dimensions
+ * of the kernel schedule.
+ * full_sched is a union_map representation of the entire kernel schedule.
+ * The schedules are all formulated in terms of the original statement
+ * instances, i.e., those that appear in the domains of the access
+ * relations.
+ */
+struct amp_group_data
+{
+    struct ppcg_scop *scop;
+    isl_union_map *full_sched;
+};
+
+/* Represents an outer array accessed by a ppcg_kernel, localized
+ * to the context of this kernel.
+ *
+ * "array" points to the corresponding array in the gpu_prog.
+ * The "n_group" "groups" are the reference groups associated to the array.
+ * If "force_private" is set, then the array (in practice a scalar)
+ * must be mapped to a register.
+ * "global" is set if the global device memory corresponding
+ * to this array is accessed by the kernel.
+ * "bound" is equal to array->bound specialized to the current kernel.
+ * "bound_expr" is the corresponding access AST expression.
+ */
+struct amp_local_array_info
+{
+    struct amp_array_info *array;
+
+    int n_group;
+    struct amp_array_ref_group **groups;
+
+    int force_private;
+    int global;
+
+    unsigned n_index;
+    isl_multi_pw_aff *bound;
+    isl_ast_expr *bound_expr;
+};
+
 /* "read" and "write" contain the original access relations, possibly
  * involving member accesses.
  *
@@ -157,6 +259,118 @@ typedef struct amp_prog
     int n_array;
     struct amp_array_info *array;
 } amp_prog;
+
+/* Representation of a local variable in a amp kernel.
+ */
+struct amp_ppcg_kernel_var
+{
+    struct amp_array_info *array;
+    char *name;
+    isl_vec *size;
+};
+
+/* Representation of a kernel.
+ *
+ * prog describes the original code from which the kernel is extracted.
+ *
+ * id is the sequence number of the kernel.
+ *
+ * block_ids contains the list of block identifiers for this kernel.
+ * thread_ids contains the list of thread identifiers for this kernel.
+ *
+ * the first n_grid elements of grid_dim represent the specified size
+ * of the grid.
+ * the first n_block elements of block_dim represent the specified or
+ * effective size of the block.
+ * Note that in the input file, the sizes of the grid and the blocks
+ * are specified in the order x, y, z, but internally, the sizes
+ * are stored in reverse order, so that the last element always
+ * refers to the x dimension.
+ *
+ * grid_size reflects the effective grid size.
+ * grid_size_expr contains a corresponding access AST expression, built within
+ * the context where the launch appears.
+ *
+ * context contains the values of the parameters and outer schedule dimensions
+ * for which any statement instance in this kernel needs to be executed.
+ *
+ * n_sync is the number of synchronization operations that have
+ * been introduced in the schedule tree corresponding to this kernel (so far).
+ *
+ * core contains the spaces of the statement domains that form
+ * the core computation of the kernel.  It is used to navigate
+ * the tree during the construction of the device part of the schedule
+ * tree in gpu_create_kernel.
+ *
+ * expanded_domain contains the original statement instances,
+ * i.e., those that appear in the domains of access relations,
+ * that are involved in the kernel.
+ * contraction maps those original statement instances to
+ * the statement instances that are active at the point
+ * in the schedule tree where the kernel is created.
+ *
+ * arrays is the set of possibly accessed outer array elements.
+ *
+ * space is the schedule space of the AST context.  That is, it represents
+ * the loops of the generated host code containing the kernel launch.
+ *
+ * n_array is the total number of arrays in the input program and also
+ * the number of element in the array array.
+ * array contains information about each array that is local
+ * to the current kernel.  If an array is not used in a kernel,
+ * then the corresponding entry does not contain any information.
+ *
+ * any_force_private is set if any array in the kernel is marked force_private
+ *
+ * block_filter contains constraints on the domain elements in the kernel
+ * that encode the mapping to block identifiers, where the block identifiers
+ * are represented by "n_grid" parameters with as names the elements
+ * of "block_ids".
+ *
+ * thread_filter contains constraints on the domain elements in the kernel
+ * that encode the mapping to thread identifiers, where the thread identifiers
+ * are represented by "n_block" parameters with as names the elements
+ * of "thread_ids".
+ *
+ * copy_schedule corresponds to the schedule dimensions of
+ * the (tiled) schedule for this kernel that have been taken into account
+ * for computing private/shared memory tiles.
+ * The domain corresponds to the original statement instances, i.e.,
+ * those that appear in the leaves of the schedule tree.
+ * copy_schedule_dim is the dimension of this schedule.
+ *
+ * sync_writes contains write references that require synchronization.
+ * Each reference is represented by a universe set in a space [S[i,j] -> R[]]
+ * with S[i,j] the statement instance space and R[] the array reference.
+ */
+struct amp_ppcg_kernel
+{
+    isl_ctx *ctx;
+    struct ppcg_options *options;
+
+    struct amp_prog *prog;
+
+    isl_set *context;
+
+    isl_union_set *core;
+    isl_union_set *arrays;
+
+    isl_union_pw_multi_aff *contraction;
+    isl_union_set *expanded_domain;
+
+    isl_space *space;
+
+    int n_array;
+    struct amp_local_array_info *array;
+
+    int n_var;
+    struct amp_ppcg_kernel_var *var;
+
+    isl_union_pw_multi_aff *copy_schedule;
+    int copy_schedule_dim;
+
+    isl_ast_node *tree;
+};
 
 amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop);
 void *amp_prog_free(amp_prog *prog);

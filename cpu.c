@@ -451,6 +451,28 @@ error:
 	return isl_ast_node_free(node);
 }
 
+/* Find the element in scop->stmts that has the given "id".
+ */
+static struct pet_stmt *find_stmt_with_amp(struct ppcg_scop *scop, __isl_keep isl_id *id)
+{
+	int i;
+
+	for (i = 0; i < scop->pet->n_stmt; ++i)
+	{
+		struct pet_stmt *stmt = scop->pet->stmts[i];
+		isl_id *id_i;
+
+		id_i = isl_set_get_tuple_id(stmt->domain);
+		isl_id_free(id_i);
+
+		if (id_i == id)
+			return stmt;
+	}
+
+	isl_die(isl_id_get_ctx(id), isl_error_internal,
+			"statement not found", return NULL);
+}
+
 /* Transform the accesses in the statement associated to the domain
  * called by "node" to refer to the AST loop iterators, construct
  * corresponding AST expressions using "build",
@@ -477,7 +499,7 @@ static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node 
 	isl_ast_expr_free(expr);
 	id = isl_ast_expr_get_id(arg);
 	isl_ast_expr_free(arg);
-	stmt->stmt = find_stmt(scop, id);
+	stmt->stmt = find_stmt_with_amp(scop, id);
 	isl_id_free(id);
 	if (!stmt->stmt)
 		goto error;
@@ -982,21 +1004,19 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
-	/* 调试显示参数 
-#ifdef DEBUG
+// #define DEBUG_GENERATE
+// 调试显示参数
+#ifdef DEBUG_GENERATE
 	printf("\n@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
 	printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
 	printf("              the amp rate : %d ( e.g: 2 means - the higher precision accounts for 1/2 )\n", options->automatic_mixed_precision_rate);
 	printf("\n\n");
-#endif // DEBUG
-	*/
+#endif // DEBUG_GENERATE
 
 	isl_schedule *schedule;
 	// 如果进行自动混合精度
 	if (options->automatic_mixed_precision)
 	{
-#define DEBUG
-
 		amp_prog *prog;
 		isl_ctx *ctx;
 		if (!scop)
@@ -1004,22 +1024,22 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 
 		// 这里先进行PPCG的调度
 		schedule = get_schedule(scop, options);
-#ifdef DEBUG
+#ifdef DEBUG_GENERATE
 		printf("@DEBUG: \n       ppcg calcu schedule is: \n");
 		isl_schedule_dump(schedule);
 		printf("\n\n");
-#endif // DEBUG
+#endif // DEBUG_GENERATE
 
 		ctx = isl_printer_get_ctx(p);
 		prog = amp_prog_alloc(ctx, scop);
 		// amp 再调度
 		isl_schedule *reschedule = amp_schedule_again(ctx, prog, isl_schedule_copy(schedule));
-		isl_ctx_deref(ctx);
-#ifdef DEBUG
+
+#ifdef DEBUG_GENERATE
 		printf("@DEBUG: \n       amp again calcu schedule is: \n");
 		isl_schedule_dump(reschedule);
 		printf("\n\n");
-#endif // DEBUG
+#endif // DEBUG_GENERATE
 
 		if (!prog || !reschedule)
 		{
