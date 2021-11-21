@@ -35,6 +35,9 @@ struct amp_array_ref_group
     int slice;
     int min_depth;
 
+    /* The shared memory tile, NULL if none. */
+    struct amp_array_tile *shared_tile;
+
     /* References in this group; point to elements of a linked list. */
     int n_ref;
     struct amp_stmt_access **refs;
@@ -182,6 +185,15 @@ struct amp_array_info
 struct amp_group_data
 {
     struct ppcg_scop *scop;
+    int kernel_depth;
+    int shared_depth;
+    int thread_depth;
+    int n_thread;
+    isl_set *privatization;
+    isl_union_map *host_sched;
+    isl_union_map *shared_sched;
+    isl_union_map *copy_sched;
+    isl_union_map *thread_sched;
     isl_union_map *full_sched;
 };
 
@@ -204,7 +216,6 @@ struct amp_local_array_info
     int n_group;
     struct amp_array_ref_group **groups;
 
-    int force_private;
     int global;
 
     unsigned n_index;
@@ -350,6 +361,9 @@ struct amp_ppcg_kernel
 
     struct amp_prog *prog;
 
+    int id;
+
+    isl_ast_expr *size_expr;
     isl_set *context;
 
     isl_union_set *core;
@@ -366,10 +380,58 @@ struct amp_ppcg_kernel
     int n_var;
     struct amp_ppcg_kernel_var *var;
 
+    isl_union_set *thread_filter;
     isl_union_pw_multi_aff *copy_schedule;
     int copy_schedule_dim;
 
     isl_ast_node *tree;
+};
+
+/* The current index is such that if you add "shift",
+ * then the result is always a multiple of "stride",
+ * where "stride" may be equal to 1.
+ * Let D represent the initial tile->depth dimensions of the computed schedule.
+ * The spaces of "lb" and "shift" are of the form
+ *
+ *	D -> [b]
+ */
+struct amp_array_bound
+{
+    isl_val *size;
+    isl_aff *lb;
+
+    isl_val *stride;
+    isl_aff *shift;
+};
+
+/* A tile of an outer array.
+ *
+ * requires_unroll is set if the schedule dimensions that are mapped
+ * to threads need to be unrolled for this (private) tile to be used.
+ *
+ * "depth" reflects the number of schedule dimensions that affect the tile.
+ * The copying into and/or out of the tile is performed at that depth.
+ *
+ * n is the dimension of the array.
+ * bound is an array of size "n" representing the lower bound
+ *	and size for each index.
+ *
+ * tiling maps a tile in the global array to the corresponding
+ * shared/private memory tile and is of the form
+ *
+ *	{ [D[i] -> A[a]] -> T[(a + shift(i))/stride - lb(i)] }
+ *
+ * where D represents the initial "depth" dimensions
+ * of the computed schedule.
+ */
+struct amp_array_tile
+{
+    isl_ctx *ctx;
+    int requires_unroll;
+    int depth;
+    int n;
+    struct amp_array_bound *bound;
+    isl_multi_aff *tiling;
 };
 
 amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop);
@@ -381,4 +443,9 @@ __isl_give isl_printer *declare_amp_lower_precision_arrays(__isl_take isl_printe
 __isl_give isl_printer *allocate_amp_lower_precision_arrays(__isl_take isl_printer *p, amp_prog *prog);
 
 __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_keep isl_schedule *schd);
+
+int amp_array_is_read_only_scalar(struct amp_array_info *array);
+int amp_array_is_scalar(struct amp_array_info *array);
+
+struct amp_array_tile *amp_array_ref_group_tile(struct amp_array_ref_group *group);
 #endif
