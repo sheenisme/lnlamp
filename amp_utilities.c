@@ -26,7 +26,7 @@ char *amp_error_string(int error)
 }
 
 // 用于给AMP生成的低精度的变量申请内存空间
-int ampMalloc(void **p, int size)
+unsigned int ampMalloc(void **p, unsigned int size)
 {
 #ifdef DEBUG
     printf("@DEBUG: \n       will malloc the size of memory is : %d \n", size);

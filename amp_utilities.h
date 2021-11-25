@@ -7,6 +7,6 @@
 /* Return the AMP error string for a given error number.  */
 char *amp_error_string(int error);
 // 用于给AMP生成的低精度的变量申请内存空间
-int ampMalloc(void **p, int size);
+unsigned int ampMalloc(void **p, unsigned int size);
 
 #endif

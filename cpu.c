@@ -22,7 +22,6 @@
 #include <isl/ast_build.h>
 #include <isl/schedule.h>
 #include <isl/schedule_node.h>
-#include <isl/isl_ast_build_private.h>
 #include <pet.h>
 
 #include "ppcg.h"
@@ -2223,7 +2222,7 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
-// #define DEBUG_GENERATE
+#define DEBUG_GENERATE
 // 调试显示参数
 #ifdef DEBUG_GENERATE
 	printf("\n@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
@@ -2236,8 +2235,6 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	// 如果进行自动混合精度
 	if (options->automatic_mixed_precision)
 	{
-		amp_prog *prog;
-		isl_ctx *ctx;
 		if (!scop)
 			return isl_printer_free(p);
 
@@ -2249,23 +2246,30 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 		printf("\n\n");
 #endif // DEBUG_GENERATE
 
-		ctx = isl_printer_get_ctx(p);
-		prog = amp_prog_alloc(ctx, scop);
+		isl_ctx *ctx = isl_printer_get_ctx(p);
+		amp_prog *prog = amp_prog_alloc(ctx, scop);
+		if (!prog)
+		{
+			printf("\n\033[31m@ERROR:\n       There are some errors because the alloced amp_prog is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \n\n\033[0m");
+			return print_cpu_with_schedule(p, scop, schedule, options);
+		}
+
 		// amp 再调度
 		isl_schedule *reschedule = amp_schedule_again(ctx, prog, isl_schedule_copy(schedule));
-
 #ifdef DEBUG_GENERATE
 		printf("@DEBUG: \n       amp again calcu schedule is: \n");
 		isl_schedule_dump(reschedule);
 		printf("\n\n");
 #endif // DEBUG_GENERATE
-
-		if (!prog || !reschedule)
+		if (!reschedule || (reschedule == schedule))
 		{
+			printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL or original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \n\n\033[0m");
 			amp_prog_free(prog);
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}
+
 		isl_schedule_free(schedule);
+
 		return print_cpu_with_amp(p, reschedule, options, prog);
 	}
 	// 不进行自动混合精度
