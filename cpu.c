@@ -1769,8 +1769,8 @@ static isl_bool at_node_with_amp(__isl_keep isl_ast_node *node, void *user)
 /* Print the required macros for the CPU AST "node" to "p",
  * including those needed for the user statements inside the AST.
  */
-static __isl_give isl_printer *cpu_print_macros(__isl_take isl_printer *p,
-												__isl_keep isl_ast_node *node)
+static __isl_give isl_printer *cpu_print_macros_with_amp(__isl_take isl_printer *p,
+														 __isl_keep isl_ast_node *node)
 {
 	if (isl_ast_node_foreach_descendant_top_down(node, &at_node_with_amp, &p) < 0)
 		return isl_printer_free(p);
@@ -1778,6 +1778,17 @@ static __isl_give isl_printer *cpu_print_macros(__isl_take isl_printer *p,
 	return p;
 }
 
+/* Print the required macros for the CPU AST "node" to "p",
+ * including those needed for the user statements inside the AST.
+ */
+static __isl_give isl_printer *cpu_print_macros(__isl_take isl_printer *p,
+												__isl_keep isl_ast_node *node)
+{
+	if (isl_ast_node_foreach_descendant_top_down(node, &at_node, &p) < 0)
+		return isl_printer_free(p);
+	p = ppcg_print_macros(p, node);
+	return p;
+}
 /* Initialize the fields of "build_info".
  *
  * Initially, the AST generation is not inside any parallel for loop.
@@ -1939,7 +1950,7 @@ static __isl_give isl_printer *print_scop_with_amp(__isl_take isl_schedule *sche
 	print_options = isl_ast_print_options_set_print_user(print_options, &print_user_with_amp, prog);
 	print_options = isl_ast_print_options_set_print_for(print_options, &print_for, NULL);
 
-	p = cpu_print_macros(p, tree);
+	p = cpu_print_macros_with_amp(p, tree);
 	if (options->automatic_mixed_precision)
 	{
 		// 加入混合精度的宏定义
