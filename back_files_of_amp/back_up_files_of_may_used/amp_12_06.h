@@ -446,9 +446,11 @@ struct amp_array_tile
 
 amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop);
 void *amp_prog_free(amp_prog *prog);
-
 __isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, amp_prog *prog, __isl_keep isl_ast_build *build);
 
+__isl_give isl_printer *amp_print_macros(__isl_take isl_printer *p);
+__isl_give isl_printer *declare_amp_lower_precision_arrays(__isl_take isl_printer *p, amp_prog *prog);
+__isl_give isl_printer *allocate_amp_lower_precision_arrays(__isl_take isl_printer *p, amp_prog *prog);
 char *amp_get_lower_precision_type(char *type);
 
 __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_keep isl_schedule *schd);

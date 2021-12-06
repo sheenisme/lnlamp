@@ -91,13 +91,6 @@ struct ppcg_transform_data
 	struct amp_local_array_info *local_array;
 };
 
-// enum ppcg_group_access_type
-// {
-// 	ppcg_access_global,
-// 	ppcg_access_shared,
-// 	ppcg_access_private
-// };
-
 enum ppcg_kernel_stmt_type
 {
 	ppcg_kernel_copy,
@@ -243,7 +236,7 @@ static FILE *get_output_file_with_amp(const char *input, const char *output, str
 		// 在文件开始加入AMP相关的头文件
 		fprintf(file, "#include <assert.h>\n");
 		fprintf(file, "#include <stdio.h>\n");
-		fprintf(file, "#include \"amp_utilities.h\"\n\n");
+		// fprintf(file, "#include \"amp_utilities.h\"\n\n");
 	}
 
 	return file;
@@ -603,7 +596,7 @@ static __isl_give isl_printer *print_user_with_amp(__isl_take isl_printer *p,
 	is_amp_kernel = !strcmp(isl_id_get_name(id), "amp_kernel");
 
 #ifdef DEBUG_PRINT_USER_WITH_AMP
-	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n       ");
+	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n");
 	isl_id_dump(id);
 	printf("\n       the name is %s \n\n", isl_id_get_name(id));
 	// printf("\n\n");
@@ -637,7 +630,7 @@ static __isl_give isl_printer *print_user_with_amp(__isl_take isl_printer *p,
 	}
 
 #ifdef DEBUG_PRINT_USER_WITH_AMP
-	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n       ");
+	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n");
 	isl_id_dump(id);
 	printf("\n\n");
 #endif // DEBUG_PRINT_USER_WITH_AMP
@@ -1382,7 +1375,7 @@ static __isl_give isl_ast_node *create_access_leaf(struct amp_ppcg_kernel *kerne
 	isl_ctx *ctx;
 
 	if (kernel == NULL)
-		printf("\n\033[31m@ERROR:\n       the amp_ppcg_kernel in create_access_leaf,is NULL!!!  \n\n\033[0m");
+		printf("\n\033[31m@ERROR:\n       the amp_ppcg_kernel in create_access_leaf,is NULL!!!  \033[0m\n\n");
 	if (!node)
 		return NULL;
 	ctx = isl_ast_node_get_ctx(node);
@@ -1419,7 +1412,7 @@ static __isl_give isl_ast_node *create_access_leaf(struct amp_ppcg_kernel *kerne
 	if (tile->tiling == NULL)
 	{
 
-		printf("\n\033[31m@ERROR:\n       the tile->tiling in create_access_leaf,is NULL!!!  \n\n\033[0m");
+		printf("\n\033[31m@ERROR:\n       the tile->tiling in create_access_leaf,is NULL!!!  \033[0m\n\n");
 		isl_multi_aff *ma = isl_multi_aff_copy(create_from_access(kernel->ctx, group, 1));
 		pma2 = isl_pw_multi_aff_from_multi_aff(isl_multi_aff_copy(ma));
 	}
@@ -1427,8 +1420,7 @@ static __isl_give isl_ast_node *create_access_leaf(struct amp_ppcg_kernel *kerne
 	{
 		pma2 = isl_pw_multi_aff_from_multi_aff(isl_multi_aff_copy(tile->tiling));
 	}
-	// from_access = create_from_access(kernel->ctx, group, read);
-	// pma2 = isl_pw_multi_aff_from_multi_aff(isl_multi_aff_copy(tile->tiling));
+
 	pma2 = isl_pw_multi_aff_pullback_pw_multi_aff(pma2, pma);
 	expr = isl_ast_build_access_from_pw_multi_aff(build, pma2);
 	stmt->u.c.local_index = expr;
@@ -1508,7 +1500,7 @@ static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node 
 		return create_access_leaf(data->kernel, group, node, build);
 	}
 
-	printf("\n\033[31m@ERROR:\n       the at_each_domain_with_amp function meets an unexpected errors.  \n\n\033[0m");
+	printf("\n\033[31m@ERROR:\n       the at_each_domain_with_amp function meets an unexpected errors.  \033[0m\n\n");
 	return isl_ast_node_set_annotation(node, id);
 	// // 下面是原始的
 	// stmt->stmt = find_stmt(scop, id);
@@ -1735,7 +1727,7 @@ static isl_bool at_node_with_amp(__isl_keep isl_ast_node *node, void *user)
 
 	if (is_kernel)
 	{
-
+		printf("\n\n\n the is kernel is true! but return directly! \n\n\n");
 		// *p = ppcg_ast_expr_print_macros(kernel->tree, *p);
 		return isl_bool_true;
 	}
@@ -1883,6 +1875,52 @@ error:
 	return NULL;
 }
 
+static __isl_give isl_printer *print_kernel_var(__isl_take isl_printer *p,
+												struct amp_ppcg_kernel_var *var)
+{
+	int j;
+
+	p = isl_printer_start_line(p);
+	// if (var->type == ppcg_access_shared)
+	// 	p = isl_printer_print_str(p, "__shared__ ");
+	// p = isl_printer_print_str(p, var->array->type);
+
+	p = isl_printer_print_str(p, amp_get_lower_precision_type(var->array->type));
+	p = isl_printer_print_str(p, " ");
+	p = isl_printer_print_str(p, var->name);
+	for (j = 0; j < var->array->n_index; ++j)
+	{
+		isl_val *v;
+
+		p = isl_printer_print_str(p, "[");
+		v = isl_vec_get_element_val(var->size, j);
+		if (isl_val_is_one(v))
+		{
+			isl_ast_expr *bound;
+			bound = isl_ast_expr_get_op_arg(var->array->bound_expr, 1 + j);
+			p = isl_printer_print_ast_expr(p, bound);
+		}else
+			p = isl_printer_print_val(p, v);
+		isl_val_free(v);
+		p = isl_printer_print_str(p, "]");
+	}
+	p = isl_printer_print_str(p, ";");
+	p = isl_printer_end_line(p);
+
+	return p;
+}
+
+static __isl_give isl_printer *print_kernel_vars(__isl_take isl_printer *p,
+												 struct amp_ppcg_kernel *kernel)
+{
+	int i;
+
+	for (i = 0; i < kernel->n_var; ++i)
+		p = print_kernel_var(p, &kernel->var[i]);
+
+	return p;
+}
+
 /* Code generate the scop 'scop' using "schedule"
  * and print the corresponding C code to 'p'.
  */
@@ -1902,7 +1940,7 @@ static __isl_give isl_printer *print_scop_with_amp(__isl_take isl_schedule *sche
 	int depth;
 
 #ifdef DEBUG_PRINT_SCOP_WITH_AMP
-	printf("\n@DEBUG: \n       at start of cpu.c-print scop,the schedule is: \n");
+	printf("@DEBUG: \n       at start of cpu.c-print scop,the schedule is: \n");
 	isl_schedule_dump(schedule);
 	printf("\n\n");
 #endif // DEBUG_PRINT_SCOP_WITH_AMP
@@ -1953,11 +1991,13 @@ static __isl_give isl_printer *print_scop_with_amp(__isl_take isl_schedule *sche
 	p = cpu_print_macros_with_amp(p, tree);
 	if (options->automatic_mixed_precision)
 	{
-		// 加入混合精度的宏定义
-		p = amp_print_macros(p);
-		// 打印低精度数组
-		p = declare_amp_lower_precision_arrays(p, prog);
-		p = allocate_amp_lower_precision_arrays(p, prog);
+		p = print_kernel_vars(p, data.kernel);
+		// // 加入混合精度的宏定义
+		// p = amp_print_macros(p);
+		// // 打印低精度数组
+		// p = declare_amp_lower_precision_arrays(p, prog);
+		// p = allocate_amp_lower_precision_arrays(p, prog);
+		// print_kernel_vars();
 	}
 
 	p = isl_ast_node_print(tree, p, print_options);
@@ -2236,7 +2276,7 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 #define DEBUG_GENERATE
 // 调试显示参数
 #ifdef DEBUG_GENERATE
-	printf("\n@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
+	printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
 	printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
 	printf("              the amp rate : %d ( e.g: 2 means - the higher precision accounts for 1/2 )\n", options->automatic_mixed_precision_rate);
 	printf("\n\n");
@@ -2261,7 +2301,7 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 		amp_prog *prog = amp_prog_alloc(ctx, scop);
 		if (!prog)
 		{
-			printf("\n\033[31m@ERROR:\n       There are some errors because the alloced amp_prog is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \n\n\033[0m");
+			printf("\n\033[31m@ERROR:\n       There are some errors because the alloced amp_prog is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}
 
@@ -2274,7 +2314,7 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 #endif // DEBUG_GENERATE
 		if (!reschedule || (reschedule == schedule))
 		{
-			printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL or original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \n\n\033[0m");
+			printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL or original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			amp_prog_free(prog);
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}

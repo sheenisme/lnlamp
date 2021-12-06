@@ -333,31 +333,6 @@ void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
     }
 }
 
-/**
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * -------------------------
- * 分割线
- * ------------------------
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- */
-
 /* Return the name of the outer array (of structs) accessed by "access".
  */
 static const char *get_outer_array_name(__isl_keep isl_map *access)
@@ -1135,6 +1110,33 @@ amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop)
     return prog;
 }
 
+static __isl_give isl_printer *print_amp_macros(__isl_take isl_printer *p)
+{
+    const char *macros =
+        "#define ampCheckReturn(ret) \\\n"
+        "  if (ret != AMP_SUCCESS) {\\\n"
+        "    fprintf(stderr, \"AMP error: %s\\n\", "
+        "amp_error_string(ret)); \\\n"
+        "    fflush(stderr); \\\n"
+        "    assert(ret == AMP_SUCCESS);\\\n  }\n";
+
+    p = isl_printer_print_str(p, macros);
+
+    p = isl_printer_start_line(p);
+    p = isl_printer_end_line(p);
+
+    return p;
+}
+
+/* Set the names of the macros that may appear in a printed isl AST.
+ */
+__isl_give isl_printer *amp_print_macros(__isl_take isl_printer *p)
+{
+    p = print_amp_macros(p);
+
+    return p;
+}
+
 /** 获得比当前精度更低的数据类型 **/
 char *amp_get_lower_precision_type(char *type)
 {
@@ -1151,7 +1153,7 @@ char *amp_get_lower_precision_type(char *type)
  * If this device memory is not accessed at all, then it does not
  * need to be allocated either.
  */
-static int amp_array_requires_allocation(struct amp_array_info *array)
+int amp_array_requires_allocation(struct amp_array_info *array)
 {
     if (amp_array_is_read_only_scalar(array))
         return 0;
@@ -1202,6 +1204,103 @@ __isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, a
     }
 
     return node;
+}
+
+/* Print a declaration for the amp array corresponding to "array" on "p".
+ */
+__isl_give isl_printer *declare_amp_lower_precision_array(__isl_take isl_printer *p, struct amp_array_info *array)
+{
+    int i;
+
+    p = isl_printer_start_line(p);
+    p = isl_printer_print_str(p, amp_get_lower_precision_type(array->type)); // 换成更低精度的类型
+    p = isl_printer_print_str(p, " ");
+    if (array->n_index > 1)
+        p = isl_printer_print_str(p, "(");
+    p = isl_printer_print_str(p, "*amp_lower_");
+    p = isl_printer_print_str(p, array->name);
+    if (array->n_index > 1)
+    {
+        p = isl_printer_print_str(p, ")");
+        for (i = 1; i < array->n_index; i++)
+        {
+            isl_ast_expr *bound;
+            bound = isl_ast_expr_get_op_arg(array->bound_expr, 1 + i);
+            p = isl_printer_print_str(p, "[");
+            p = isl_printer_print_ast_expr(p, bound);
+            p = isl_printer_print_str(p, "]");
+            isl_ast_expr_free(bound);
+        }
+    }
+    p = isl_printer_print_str(p, ";");
+    p = isl_printer_end_line(p);
+
+    return p;
+}
+
+__isl_give isl_printer *declare_amp_lower_precision_arrays(__isl_take isl_printer *p, amp_prog *prog)
+{
+    int i;
+
+    for (i = 0; i < prog->n_array; ++i)
+    {
+        if (!amp_array_requires_allocation(&prog->array[i]))
+            continue;
+
+        p = declare_amp_lower_precision_array(p, &prog->array[i]);
+    }
+    p = isl_printer_start_line(p);
+    p = isl_printer_end_line(p);
+
+    return p;
+}
+
+/* Print an expression for the size of "array" in bytes.
+ */
+__isl_give isl_printer *amp_array_info_print_size(__isl_take isl_printer *prn, struct amp_array_info *array)
+{
+    int i;
+
+    for (i = 0; i < array->n_index; ++i)
+    {
+        isl_ast_expr *bound;
+
+        prn = isl_printer_print_str(prn, "(");
+        bound = isl_ast_expr_get_op_arg(array->bound_expr, 1 + i);
+        prn = isl_printer_print_ast_expr(prn, bound);
+        isl_ast_expr_free(bound);
+        prn = isl_printer_print_str(prn, ") * ");
+    }
+    prn = isl_printer_print_str(prn, "sizeof(");
+    prn = isl_printer_print_str(prn, amp_get_lower_precision_type(array->type)); // 换成更低精度的
+    prn = isl_printer_print_str(prn, ")");
+
+    return prn;
+}
+
+__isl_give isl_printer *allocate_amp_lower_precision_arrays(__isl_take isl_printer *p, amp_prog *prog)
+{
+    int i;
+
+    for (i = 0; i < prog->n_array; ++i)
+    {
+        struct amp_array_info *array = &prog->array[i];
+
+        if (!amp_array_requires_allocation(&prog->array[i]))
+            continue;
+        p = ppcg_ast_expr_print_macros(array->bound_expr, p);
+        p = isl_printer_start_line(p);
+        p = isl_printer_print_str(p, "ampCheckReturn(ampMalloc((void **) &amp_lower_");
+        p = isl_printer_print_str(p, prog->array[i].name);
+        p = isl_printer_print_str(p, ", ");
+        p = amp_array_info_print_size(p, &prog->array[i]);
+        p = isl_printer_print_str(p, "));");
+        p = isl_printer_end_line(p);
+    }
+    p = isl_printer_start_line(p);
+    p = isl_printer_end_line(p);
+
+    return p;
 }
 
 /**
@@ -2093,7 +2192,8 @@ static __isl_give isl_union_map *anchored_non_local_accesses(
  * D corresponds to the outer tile->depth dimensions of
  * the kernel schedule.
  */
-static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_array_ref_group *group, int read)
+static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx,
+                                                    struct amp_array_ref_group *group, int read)
 {
     isl_space *space;
     isl_id *id;
@@ -2107,6 +2207,114 @@ static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_arr
     space = isl_space_set_tuple_id(space, isl_dim_in, id);
 
     return isl_multi_aff_identity(space);
+}
+
+/* Return the extent of "array", recomputed from the bounds.
+ * The recomputed extent may be simpler than the original extent.
+ */
+static __isl_give isl_set *array_extent(struct amp_array_info *array)
+{
+    int i;
+    isl_id *id;
+    isl_space *space;
+    isl_local_space *ls;
+    isl_set *extent;
+
+    id = isl_set_get_tuple_id(array->extent);
+    space = isl_set_get_space(array->extent);
+    extent = isl_set_universe(isl_space_copy(space));
+    ls = isl_local_space_from_space(space);
+    for (i = 0; i < array->n_index; ++i)
+    {
+        isl_pw_aff *bound;
+        isl_aff *aff;
+        isl_pw_aff *index;
+        isl_set *lt;
+
+        extent = isl_set_lower_bound_si(extent, isl_dim_set, i, 0);
+
+        aff = isl_aff_var_on_domain(isl_local_space_copy(ls),
+                                    isl_dim_set, i);
+        index = isl_pw_aff_from_aff(aff);
+        bound = isl_multi_pw_aff_get_pw_aff(array->bound, i);
+        bound = isl_pw_aff_from_range(bound);
+        bound = isl_pw_aff_add_dims(bound, isl_dim_in, array->n_index);
+        bound = isl_pw_aff_set_tuple_id(bound, isl_dim_in,
+                                        isl_id_copy(id));
+        lt = isl_pw_aff_lt_set(index, bound);
+        extent = isl_set_intersect(extent, lt);
+    }
+    isl_local_space_free(ls);
+    isl_id_free(id);
+
+    return extent;
+}
+
+/* Return a map from the first group->shared_tile->depth dimensions
+ * of the computed schedule to the array tile in
+ * global memory that corresponds to the shared memory copy.
+ *
+ * In particular, return a map
+ *
+ *	{ D[i] -> A[a] }
+ *
+ * with constraints
+ *
+ *	tile_offset(i) <= a <= tile_offset(i) + tile_size - 1		(1)
+ *
+ * and
+ *
+ *	0 <= a <= array_size - 1					(2)
+ *
+ * Note that if some stride has been detected (i.e., when
+ * group->shared_tile->bound[i].shift is set), then a in (1) refers
+ * to the shifted and scaled down version.
+ *
+ * Constraints (1) are obtained by mapping the size constraints on the
+ * shared/private memory tile back to the access relation.
+ * Constraints (2) are obtained from the (recomputed) extent.
+ */
+static __isl_give isl_map *group_tile(struct amp_array_ref_group *group)
+{
+    int i;
+    int n_index = group->array->n_index;
+    isl_map *tile;
+    isl_space *space;
+    isl_set *local;
+    isl_set *extent;
+
+    space = isl_multi_aff_get_space(group->shared_tile->tiling);
+    space = isl_space_range(space);
+    local = isl_set_universe(space);
+    for (i = 0; i < n_index; ++i)
+    {
+        isl_val *bound;
+
+        local = isl_set_lower_bound_si(local, isl_dim_set, i, 0);
+        bound = isl_val_copy(group->shared_tile->bound[i].size);
+        bound = isl_val_sub_ui(bound, 1);
+        local = isl_set_upper_bound_val(local, isl_dim_set, i, bound);
+    }
+    local = isl_set_preimage_multi_aff(local, isl_multi_aff_copy(group->shared_tile->tiling));
+    tile = isl_set_unwrap(local);
+    extent = array_extent(group->array);
+    tile = isl_map_intersect_range(tile, extent);
+
+    return tile;
+}
+
+/* Mark the given band node "node" for unrolling by the AST generator and
+ * then sink it to the leaves of the schedule tree.
+ * All dimensions of "node" are assumed to be coincident, such that this
+ * sinking is a valid operation.
+ */
+static __isl_give isl_schedule_node *unroll(__isl_take isl_schedule_node *node)
+{
+    node = ppcg_set_schedule_node_type(node, isl_ast_loop_unroll);
+
+    node = isl_schedule_node_band_sink(node);
+
+    return node;
 }
 
 /**
@@ -2893,7 +3101,7 @@ static __isl_give isl_map *remove_strides(__isl_take isl_map *access,
 static isl_bool can_tile(__isl_keep isl_map *access,
                          struct amp_array_tile *tile)
 {
-// #define DEBUG_CAN_TILE
+#define DEBUG_CAN_TILE
 
     int i;
     isl_bool has_strides, valid;
@@ -2966,11 +3174,9 @@ static isl_bool can_tile(__isl_keep isl_map *access,
     else if (!valid)
     {
         box = isl_map_get_range_lattice_tile(access);
-#ifdef DEBUG_CAN_TILE
-        printf("@DEBUG: \n       get_range_lattice_tile is: \n");
+
+        printf("\n\n get_range_lattice_tile is: \n");
         isl_fixed_box_dump(box);
-#endif // DEBUG_CAN_TILE
-       
 
         offset = isl_fixed_box_get_offset(box);
         size = isl_fixed_box_get_size(box);
@@ -2982,6 +3188,7 @@ static isl_bool can_tile(__isl_keep isl_map *access,
         isl_multi_aff_free(offset);
         isl_multi_val_free(size);
     }
+
     isl_fixed_box_free(box);
 
     return valid;
@@ -3286,7 +3493,7 @@ static int check_requires_unroll(struct amp_group_data *data,
 static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
                                           struct amp_array_ref_group *group, struct amp_group_data *data)
 {
-// #define DEBUG_COMPUTE_GROUP_BOUNDS_CORE
+#define DEBUG_COMPUTE_GROUP_BOUNDS_CORE
 
     isl_ctx *ctx = isl_space_get_ctx(group->array->space);
     isl_union_map *access, *local;
@@ -3406,9 +3613,11 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     unique_depth = compute_accessed_by_single_thread_depth(data, acc);
 
     acc = isl_map_intersect_domain(acc, isl_set_copy(data->privatization));
-    acc = isl_map_project_out(acc, isl_dim_in, data->thread_depth, data->n_thread);
+    acc = isl_map_project_out(acc, isl_dim_in, data->thread_depth,
+                              data->n_thread);
     requires_unroll = check_requires_unroll(data, acc, force_private);
-    if (unique_depth < 0 || requires_unroll < 0 || (requires_unroll))
+    if (unique_depth < 0 || requires_unroll < 0 ||
+        (requires_unroll))
     {
         isl_map_free(acc);
         return requires_unroll < 0 ? isl_stat_error : isl_stat_ok;
@@ -4414,7 +4623,7 @@ static __isl_give isl_multi_aff *strided_tile(
  */
 static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group)
 {
-// #define DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
+#define DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     int i;
     struct amp_array_tile *tile;
@@ -4462,7 +4671,9 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     printf("@DEBUG: \n       when i(%d) and tile->n(%d), tiling is:\n", i, tile->n);
     isl_multi_aff_dump(tiling);
     printf("\n");
-#endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING    
+#endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
+
+    isl_multi_aff_dump(tiling);
 
     lb = isl_multi_aff_zero(space);
     for (i = 0; i < tile->n; ++i)
@@ -4471,7 +4682,6 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
         lb = isl_multi_aff_set_aff(lb, i, lb_i);
     }
     lb = isl_multi_aff_pullback_multi_aff(lb, insert_array);
-    
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
     printf("@DEBUG: \n       the final lb is: \n");
     isl_multi_aff_dump(lb);
@@ -4526,6 +4736,31 @@ static void compute_group_tilings(struct amp_ppcg_kernel *kernel)
             amp_array_ref_group_compute_tiling(array->groups[j]);
         }
     }
+}
+
+/* Insert a context node at "node" introducing the block and thread
+ * identifiers along with their bounds, which are stored in kernel->grid_size
+ * and kernel->block_dim.
+ * Note that the bounds on the block identifiers may implicitly impose
+ * constraints on the parameters.  A guard needs to be inserted
+ * in the schedule tree to ensure that those bounds hold at "node".
+ * This guard is inserted in insert_guard.
+ */
+static __isl_give isl_schedule_node *insert_context(struct amp_ppcg_kernel *kernel,
+                                                    __isl_take isl_schedule_node *node)
+{
+    isl_set *context;
+
+    context = isl_set_universe(isl_set_get_space(kernel->context));
+
+    // context = add_bounded_parameters_dynamic(context,
+    //                                          kernel->grid_size, kernel->block_ids);
+    // context = add_bounded_parameters(context,
+    //                                  kernel->block_dim, kernel->thread_ids);
+
+    node = isl_schedule_node_insert_context(node, context);
+
+    return node;
 }
 
 /* Create a ppcg_kernel representing the domain instances that reach "node"
