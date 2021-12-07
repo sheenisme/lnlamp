@@ -1,5 +1,7 @@
 .deps/
 .libs/
+.vscode/
+
 Makefile
 Makefile.in
 aclocal.m4
@@ -26,3 +28,23 @@ test-driver
 
 opencl_test.sh
 polybench_test.sh
+
+amp.o
+cpu.o
+cuda.o
+cuda_common.o
+gpu.o
+gpu_array_tile.o
+gpu_group.o
+gpu_hybrid.o
+gpu_print.o
+gpu_tree.o
+grouping.o
+hybrid.o
+opencl.o
+ppcg.o
+ppcg_options.o
+print.o
+schedule.o
+util.o
+version.o

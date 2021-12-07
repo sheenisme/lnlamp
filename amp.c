@@ -5146,7 +5146,9 @@ __isl_give struct amp_union_set_list *amp_get_filters(__isl_keep isl_ctx *ctx, _
         // 如果是不含循环约束的语句实例
         if (con_deepth < 1)
         {
-            printf("\n\n (con_deepth < 1) is true!!\n\n");
+#ifdef DEBUG_AMP_GET_FILTERS
+            printf("@DEBUG: \n       (con_deepth(%d) < 1) is true!!! \n", con_deepth);
+#endif //  DEBUG_AMP_GET_FILTERS
             uset_list_left = isl_union_set_list_insert(uset_list_left, basic_set_list_dim - skip_left, isl_union_set_from_basic_set(isl_basic_set_copy(bset)));
             uset_list_right = isl_union_set_list_insert(uset_list_right, basic_set_list_dim - skip_right, isl_union_set_from_basic_set(isl_basic_set_copy(bset)));
             continue;
