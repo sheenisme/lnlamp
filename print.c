@@ -125,13 +125,19 @@ static void ppcg_macros_free(void *user)
 
 /* Default macro definitions (when GNU extensions are allowed).
  */
+// struct ppcg_macros ppcg_macros_default = {
+// 	.min = "(x,y)    "
+// 		"({ __typeof__(x) _x = (x); __typeof__(y) _y = (y); "
+// 		"_x < _y ? _x : _y; })",
+// 	.max = "(x,y)    "
+// 		"({ __typeof__(x) _x = (x); __typeof__(y) _y = (y); "
+// 		"_x > _y ? _x : _y; })",
+// };
 struct ppcg_macros ppcg_macros_default = {
-	.min = "(x,y)    "
-		"({ __typeof__(x) _x = (x); __typeof__(y) _y = (y); "
-		"_x < _y ? _x : _y; })",
-	.max = "(x,y)    "
-		"({ __typeof__(x) _x = (x); __typeof__(y) _y = (y); "
-		"_x > _y ? _x : _y; })",
+    .min = "(x,y)    "
+           "(x < y ? x : y)",
+    .max = "(x,y)    "
+           "(x > y ? x : y)",
 };
 
 /* Name used for the note that keeps track of macro definitions.
