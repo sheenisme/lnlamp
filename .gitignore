@@ -3,10 +3,6 @@
 .vscode/
 .cspell/
 
-# 忽略测试的代码
-amp_code_gen_test/
-back_files_of_amp/
-
 Makefile
 Makefile.in
 aclocal.m4
