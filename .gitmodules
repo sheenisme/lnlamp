@@ -4,3 +4,6 @@
 [submodule "pet"]
 	path = pet
 	url = git://repo.or.cz/pet.git
+[submodule "amp_code_gen_test"]
+	path = amp_code_gen_test
+	url = git@gitee.com:sheenisme/amp_code_gen_test.git
