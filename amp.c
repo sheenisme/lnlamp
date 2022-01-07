@@ -93,13 +93,17 @@ void amp_array_bound_dump(struct amp_array_bound *bound)
     {
         printf("       the amp_array_bound is on the below :\n");
         printf("          the      size    is: \n");
-        isl_val_dump(bound->size);
+        if (bound->size)
+            isl_val_dump(bound->size);
         printf("          the      lb      is: \n");
-        isl_aff_dump(bound->lb);
+        if (bound->lb)
+            isl_aff_dump(bound->lb);
         printf("          the    stride    is: \n");
-        isl_val_dump(bound->stride);
+        if (bound->stride)
+            isl_val_dump(bound->stride);
         printf("          the    shift     is: \n");
-        isl_aff_dump(bound->shift);
+        if (bound->shift)
+            isl_aff_dump(bound->shift);
     }
     else
     {
@@ -116,7 +120,8 @@ void amp_array_tile_dump(struct amp_array_tile *tile)
         printf("          the   depth     is %d \n", tile->depth);
         printf("          the     n       is %d \n", tile->n);
         printf("          the   tiling    is:   \n");
-        isl_multi_aff_dump(tile->tiling);
+        if (tile->tiling)
+            isl_multi_aff_dump(tile->tiling);
         printf("          the   bound     is:   \n");
         amp_array_bound_dump(tile->bound);
     }
@@ -2253,7 +2258,6 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     isl_multi_aff *from_access;
     isl_multi_pw_aff *mpa;
     isl_multi_union_pw_aff *mupa;
-    isl_union_pw_multi_aff *contraction;
     isl_schedule_node *graft;
     isl_union_set *filter;
     isl_space *space;
@@ -2266,9 +2270,10 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     // }
 
     tile = amp_array_ref_group_tile(group);
-#ifdef DEBUG_AMP_ADD_COPIES_GROUP
+#ifdef DEBUG_AMP_ADD_COPIES_GROUP_SHARED
     printf("\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
-    amp_array_tile_dump(tile);
+    if (tile)
+        amp_array_tile_dump(tile);
     printf("\n\n\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
@@ -3538,9 +3543,9 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
 
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
     printf("@DEBUG: \n       in start of compute_group_bounds_core, the data is: \n");
-    amp_group_data_dump(data);
+    // amp_group_data_dump(data);
     printf("        the group is:        ");
-    amp_array_ref_group_dump(group);
+    // amp_array_ref_group_dump(group);
     printf("        the access(read and write) is:\n");
     isl_union_map_dump(access);
     printf("        the local is:\n");
@@ -3557,8 +3562,11 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     if (r >= 0 && kernel->options->debug->verbose && use_shared && no_reuse && coalesced)
         report_no_reuse_and_coalesced(kernel, access);
 
-    if (!no_reuse || !coalesced)
-    {
+#ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
+    printf("@DEBUG: \n       the coalesced is: %d \n", coalesced);
+#endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
+    // if (!no_reuse || !coalesced)
+    if (1) {
         group->shared_tile = amp_array_tile_create(ctx, group->array->n_index);
         acc = shared_access(group, access, data);
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
@@ -3570,42 +3578,38 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
 
         if (ok < 0)
             r = isl_stat_error;
-        else if (!ok)
-        {
-            // struct amp_array_tile *tile = group->shared_tile;
-            // struct amp_array_info *array = group->array;
-            // for (int i = 0; i < tile->n; i++)
-            // {
-            //     printf("\n\n  hbobiuhfeiopfh  \n\n");
-            //     isl_multi_pw_aff_get_at(array->bound, i);
+        // else if (!ok)
+        // {
+        //     struct amp_array_tile *tile = group->shared_tile;
+        //     struct amp_array_info *array = group->array;
+        //     for (int i = 0; i < tile->n; i++)
+        //     {
+        //         printf("\n\n  hbobiuhfeiopfh  \n\n");
+        //         isl_multi_pw_aff_get_at(array->bound, i);
 
-            //     isl_val *v = isl_multi_val_get_val(isl_set_get_plain_multi_val_if_fixed(array->declared_extent), i);
-            //     if (isl_val_is_one(tile->bound[i].size))
-            //         tile->bound[i].size = v;
+        //         isl_val *v = isl_multi_val_get_val(isl_set_get_plain_multi_val_if_fixed(array->declared_extent), i);
+        //         if (isl_val_is_one(tile->bound[i].size))
+        //             tile->bound[i].size = v;
 
-            //     isl_val_dump(tile->bound[i].size);
-            //     printf("\n\n 123456789987654321 \n\n");
-            // }
-        }
+        //         isl_val_dump(tile->bound[i].size);
+        //         printf("\n\n 123456789987654321 \n\n");
+        //     }
+        // }
 
-#ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
-        if (group->shared_tile)
-        {
-            printf("@DEBUG: \n       the shared_tile create over!    the ok of can_tile function is: %d \n       the shared_tile is : \n", ok);
-            amp_array_tile_dump(group->shared_tile);
-            // printf("\n       the group is : \n");
-            // amp_array_ref_group_dump(group);
-        }
-        else
-        {
-            printf("@ERROR: \n       the created shared_tile is NULL!!! \n");
-            printf("          the group->array->n_index is %d 、the acc is:\n", group->array->n_index);
-            isl_map_dump(acc);
-            printf("          the ok of can_tile function is: %d\n", ok);
-            printf("\n\n");
-        }
-#endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
-
+        // #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
+        //         if (group->shared_tile && group) {
+        //             printf("@DEBUG: \n       the shared_tile create over!    the ok of can_tile function is: %d \n       the shared_tile is : \n", ok);
+        //             amp_array_tile_dump(group->shared_tile);
+        //             printf("\n       the group is : \n");
+        //             amp_array_ref_group_dump(group);
+        //         } else {
+        //             printf("@ERROR: \n       the created shared_tile is NULL!!! \n");
+        //             printf("          the group->array->n_index is %d 、the acc is:\n", group->array->n_index);
+        //             isl_map_dump(acc);
+        //             printf("          the ok of can_tile function is: %d\n", ok);
+        //             printf("\n\n");
+        //         }
+        // #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
         isl_map_free(acc);
     }
 
@@ -3615,26 +3619,26 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         return r;
     }
 
-    access = isl_union_map_apply_domain(access, isl_union_map_copy(data->thread_sched));
+    // access = isl_union_map_apply_domain(access, isl_union_map_copy(data->thread_sched));
 
-    acc = isl_map_from_union_map(access);
+    // acc = isl_map_from_union_map(access);
 
-    if (!force_private && !access_is_bijective(data, acc))
-    {
-        isl_map_free(acc);
-        return isl_stat_ok;
-    }
+    // if (!force_private && !access_is_bijective(data, acc))
+    // {
+    //     isl_map_free(acc);
+    //     return isl_stat_ok;
+    // }
 
-    unique_depth = compute_accessed_by_single_thread_depth(data, acc);
+    // unique_depth = compute_accessed_by_single_thread_depth(data, acc);
 
-    acc = isl_map_intersect_domain(acc, isl_set_copy(data->privatization));
-    acc = isl_map_project_out(acc, isl_dim_in, data->thread_depth, data->n_thread);
-    requires_unroll = check_requires_unroll(data, acc, force_private);
-    if (unique_depth < 0 || requires_unroll < 0 || (requires_unroll))
-    {
-        isl_map_free(acc);
-        return requires_unroll < 0 ? isl_stat_error : isl_stat_ok;
-    }
+    // acc = isl_map_intersect_domain(acc, isl_set_copy(data->privatization));
+    // acc = isl_map_project_out(acc, isl_dim_in, data->thread_depth, data->n_thread);
+    // requires_unroll = check_requires_unroll(data, acc, force_private);
+    // if (unique_depth < 0 || requires_unroll < 0 || (requires_unroll))
+    // {
+    //     isl_map_free(acc);
+    //     return requires_unroll < 0 ? isl_stat_error : isl_stat_ok;
+    // }
 
     // group->private_tile = amp_array_tile_create(ctx, n_index);
     // group->private_tile->requires_unroll = requires_unroll;
@@ -4024,7 +4028,7 @@ static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
 
     int i;
     int n;
-    isl_ctx *ctx = isl_union_map_get_ctx(data->full_sched);
+    isl_ctx *ctx = isl_union_map_get_ctx(data->shared_sched);
     struct amp_array_ref_group **groups;
 
     groups = isl_calloc_array(ctx, struct amp_array_ref_group *, local->array->n_ref);
@@ -4164,7 +4168,7 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
     data.thread_sched = expand(data.thread_sched, contraction);
     isl_union_pw_multi_aff_free(contraction);
 
-    // node = isl_schedule_node_child(node, 0);
+    node = isl_schedule_node_child(node, 0);
     // data.full_sched = isl_union_map_copy(data.shared_sched);
     data.full_sched = isl_union_map_copy(data.thread_sched);
     data.full_sched = isl_union_map_flat_range_product(data.full_sched, isl_schedule_node_get_subtree_schedule_union_map(node));
@@ -4215,8 +4219,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group(
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
         return amp_add_copies_group_shared(kernel, group, node, read);
-    } else if (type == ppcg_access_global) {
-        return amp_add_copies_group_shared(kernel, group, node, read);
+        // } else if (type == ppcg_access_global) {
+        //     return amp_add_copies_group_shared(kernel, group, node, read);
     }
 
     return node;
@@ -4627,13 +4631,11 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     tile = amp_array_ref_group_tile(group);
     if (!tile)
     {
-        // printf("@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling
-        // function, the tile of group is null !!! please notice! the group is:
-        // \n"); printf("@WARN_INFO: \n       in the
-        // amp_array_ref_group_compute_tiling function, the tile of group is null
-        // !!! please notice! the group is: \n"); amp_array_ref_group_dump(group);
+        // printf("@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling        function, the tile of group is null !!! please notice! the group is:         \n");
+        printf("@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
+        amp_array_ref_group_dump(group);
         // amp_array_tile_dump(tile);
-        // printf("\n\n");
+        printf("\n\n");
         return;
     }
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
@@ -4718,15 +4720,15 @@ static void compute_group_tilings(struct amp_ppcg_kernel *kernel)
 
         for (j = 0; j < array->n_group; ++j)
         {
-#ifdef DEBUG_COMPUTE_GROUP_TILINGS
-            printf("@DEBUG: \n       in compute_group_tilings,the n_array is %d,         the n_group is %d! \n", kernel->n_array, array->n_group);
-            printf("       the kernel->array[%d]->groups[%d]->array->name is %s .\n", i, j, array->groups[j]->array->name);
-            printf("       the kernel->array[%d]->groups[%d]->shared_tile is: \n", i, j);
-            amp_array_tile_dump(array->groups[j]->shared_tile);
-            printf("\n\n");
-#endif // DEBUG_COMPUTE_GROUP_TILINGS
-
             amp_array_ref_group_compute_tiling(array->groups[j]);
+
+#ifdef DEBUG_COMPUTE_GROUP_TILINGS
+            printf("@DEBUG: \n       in end of compute_group_tilings,the n_array is %d,         the n_group is %d! \n", kernel->n_array, array->n_group);
+            printf("       the kernel->array[%d]->groups[%d]->array->name is %s .\n", i, j, array->groups[j]->array->name);
+            // printf("       the kernel->array[%d]->groups[%d]->shared_tile is: \n", i, j);
+            // amp_array_tile_dump(array->groups[j]->shared_tile);
+            // printf("\n\n");
+#endif // DEBUG_COMPUTE_GROUP_TILINGS
         }
     }
 }
@@ -4858,8 +4860,8 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
     printf("\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
-    if (!single_statement)
-        node = group_statements(node, kernel->id);
+    // if (!single_statement)
+    //     node = group_statements(node, kernel->id);
 
     // node = isl_schedule_node_child(node, 0);
     // node = insert_context(kernel, node);
