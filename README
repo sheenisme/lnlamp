@@ -1,3 +1,15 @@
+声明: 此代码是本人根据PPCG源代码进行修改和开发的代码，仅供个人开源使用.
+
+我的笔记:
+	1. 安装PPCG教程，详见链接: https://zhuanlan.zhihu.com/p/360210690
+	2. 推送本地代码分支到远端代码分支:
+		git push <远程主机名> <本地分支名>:<远程分支名>
+		eg: git push origin amp-master:amp-master
+
+
+以下是原作者的说明（The following is the original author’s description）:
+PPCG开源网址: http://ppcg.gforge.inria.fr/
+
 Requirements:
 
 - automake, autoconf, libtool
