@@ -2057,28 +2057,27 @@ error:
 }
 
 /**
- * @brief 
- * 
- * @param node 
- * @param scop 
- * @param tile_len 
- * @return __isl_give* 
+ * @brief 读取每个循环的分块的大小
  */
-__isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_node *node,
-                                                     struct ppcg_scop *scop, int *tile_len) {
+__isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_node *node, struct ppcg_scop *scop, int *tile_len) {
+    // #define DEBUG_SPLIT_TILE_READ_TILE_SIZES
+
     int i, n;
     int *tile_size;
     isl_ctx *ctx;
     isl_set *size;
     isl_space *space;
     isl_multi_val *mv;
-    isl_val_list *list;
 
     if (!node || isl_schedule_node_get_type(node) != isl_schedule_node_band)
         return NULL;
 
     space = isl_schedule_node_band_get_space(node);
     ctx = isl_space_get_ctx(space);
+
+#ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
+    printf("@DEBUG: \n       the split tile len is : %d，the string of split tile sizes is : '%s'. \n", *tile_len, scop->options->tile_sizes);
+#endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     tile_size = isl_alloc_array(ctx, int, *tile_len);
     if (!tile_size)
@@ -2087,13 +2086,26 @@ __isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_nod
     for (i = 0; i < *tile_len; i++)
         tile_size[i] = scop->options->tile_size;
 
+#ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
+    printf("@DEBUG: \n       the split tile sizes is : \n");
+    for (i = 0; i < *tile_len; i++)
+        printf("           size[%d] : %d \n", i, tile_size[i]);
+#endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
+
     size = isl_set_read_from_str(ctx, scop->options->tile_sizes);
+#ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
+    printf("@DEBUG: \n       tile_sizes is %s ,the updated size is: \n", scop->options->tile_sizes);
+    isl_set_dump(size);
+#endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     if (read_sizes_from_set(size, tile_size, tile_len) < 0)
         goto error;
 
-    //TODO: set for debug
-    //set_used_sizes(gen, "tile", gen->kernel_id, tile_size, *tile_len);
+#ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
+    printf("@DEBUG: \n       the split tile sizes is : \n");
+    for (i = 0; i < *tile_len; i++)
+        printf("           size[%d] : %d \n", i, tile_size[i]);
+#endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     mv = ppcg_multi_val_from_int_list(space, tile_size);
 
@@ -2249,11 +2261,11 @@ static __isl_give isl_schedule *get_schedule(struct ppcg_scop *ps,
 	ctx = isl_union_set_get_ctx(ps->domain);
 	schedule = ppcg_get_schedule(ctx, options,
 				    &optionally_compute_schedule, ps);
-	if (ps->options->tile)
-		schedule = isl_schedule_map_schedule_node_bottom_up(schedule,
-							&tile_band, ps);
+    if (ps->options->tile || ps->options->split_tile)
+        schedule = isl_schedule_map_schedule_node_bottom_up(schedule,
+                                                            &tile_band, ps);
 
-	return schedule;
+    return schedule;
 }
 
 /* Generate CPU code for the scop "ps" using "schedule" and
@@ -2359,13 +2371,13 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
-// #define DEBUG_GENERATE
+    // #define DEBUG_GENERATE
 // 调试显示参数
-#ifdef DEBUG_GENERATE
-	printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
-	printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
-	printf("              the amp rate : %d ( e.g: 2 means - the higher precision accounts for 1/2 )\n", options->automatic_mixed_precision_rate);
-	printf("\n\n");
+#ifndef DEBUG_GENERATE
+    printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
+    printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
+    printf("              the amp rate : %d ( e.g: 50 means - the higher precision accounts for 50/100 )\n", options->automatic_mixed_precision_rate);
+    printf("\n\n");
 #endif // DEBUG_GENERATE
 
 	isl_schedule *schedule;
