@@ -2123,7 +2123,12 @@ static __isl_give isl_schedule_node *tile_band(
 
 	space = isl_schedule_node_band_get_space(node);
     sizes = ppcg_multi_val_from_int(space, scop->options->tile_size);
-    sizes = split_tile_read_tile_sizes(node, scop, &n);
+
+    // 如果要针对循环设置不同的分块大小,即分裂分块
+    if (scop->options->split_tile) {
+        isl_multi_val_free(sizes);
+        sizes = split_tile_read_tile_sizes(node, scop, &n);
+    }
 
     return tile(node, sizes);
 }
