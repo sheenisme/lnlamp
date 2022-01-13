@@ -2023,6 +2023,86 @@ static __isl_give isl_schedule_node *tile(__isl_take isl_schedule_node *node,
 	return node;
 }
 
+/* Given a singleton set, extract the first (at most *len) elements
+ * of the single integer tuple into *sizes and update *len if needed.
+ *
+ * If "set" is NULL, then the "sizes" array is not updated.
+ */
+static isl_stat read_sizes_from_set(__isl_take isl_set *set, int *sizes, int *len) {
+    int i;
+    int dim;
+
+    if (!set)
+        return isl_stat_ok;
+
+    dim = isl_set_dim(set, isl_dim_set);
+    if (dim < *len)
+        *len = dim;
+
+    for (i = 0; i < *len; ++i) {
+        isl_val *v;
+
+        v = isl_set_plain_get_val_if_fixed(set, isl_dim_set, i);
+        if (!v)
+            goto error;
+        sizes[i] = isl_val_get_num_si(v);
+        isl_val_free(v);
+    }
+
+    isl_set_free(set);
+    return isl_stat_ok;
+error:
+    isl_set_free(set);
+    return isl_stat_error;
+}
+
+/**
+ * @brief 
+ * 
+ * @param node 
+ * @param scop 
+ * @param tile_len 
+ * @return __isl_give* 
+ */
+__isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_node *node,
+                                                     struct ppcg_scop *scop, int *tile_len) {
+    int i, n;
+    int *tile_size;
+    isl_ctx *ctx;
+    isl_set *size;
+    isl_space *space;
+    isl_multi_val *mv;
+    isl_val_list *list;
+
+    if (!node || isl_schedule_node_get_type(node) != isl_schedule_node_band)
+        return NULL;
+
+    space = isl_schedule_node_band_get_space(node);
+    ctx = isl_space_get_ctx(space);
+
+    tile_size = isl_alloc_array(ctx, int, *tile_len);
+    if (!tile_size)
+        return NULL;
+
+    for (i = 0; i < *tile_len; i++)
+        tile_size[i] = scop->options->tile_size;
+
+    size = isl_set_read_from_str(ctx, scop->options->tile_sizes);
+
+    if (read_sizes_from_set(size, tile_size, tile_len) < 0)
+        goto error;
+
+    //TODO: set for debug
+    //set_used_sizes(gen, "tile", gen->kernel_id, tile_size, *tile_len);
+
+    mv = ppcg_multi_val_from_int_list(space, tile_size);
+
+    return mv;
+error:
+    free(tile_size);
+    return NULL;
+}
+
 /* Tile "node", if it is a band node with at least 2 members.
  * The tile sizes are set from the "tile_size" option.
  */
@@ -2042,9 +2122,10 @@ static __isl_give isl_schedule_node *tile_band(
 		return node;
 
 	space = isl_schedule_node_band_get_space(node);
-	sizes = ppcg_multi_val_from_int(space, scop->options->tile_size);
+    sizes = ppcg_multi_val_from_int(space, scop->options->tile_size);
+    sizes = split_tile_read_tile_sizes(node, scop, &n);
 
-	return tile(node, sizes);
+    return tile(node, sizes);
 }
 
 /* Construct schedule constraints from the dependences in ps
@@ -2273,7 +2354,7 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 	struct ppcg_scop *scop, struct ppcg_options *options)
 {
-#define DEBUG_GENERATE
+// #define DEBUG_GENERATE
 // 调试显示参数
 #ifdef DEBUG_GENERATE
 	printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");

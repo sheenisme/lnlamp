@@ -33,14 +33,18 @@ struct ppcg_options {
 	int tile;
 	int tile_size;
 
-	/* Automatic mixed precision */
-	int automatic_mixed_precision;
-	int automatic_mixed_precision_rate;
+    /* Perform split tiling. */
+    int split_tile;
+    char *tile_sizes;
 
-	/* Isolate full tiles from partial tiles. */
-	int isolate_full_tiles;
+    /* Automatic mixed precision */
+    int automatic_mixed_precision;
+    int automatic_mixed_precision_rate;
 
-	/* Take advantage of private memory. */
+    /* Isolate full tiles from partial tiles. */
+    int isolate_full_tiles;
+
+    /* Take advantage of private memory. */
 	int use_private_memory;
 
 	/* Take advantage of shared memory. */
