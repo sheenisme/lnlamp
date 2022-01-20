@@ -2101,7 +2101,7 @@ __isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_nod
     if (read_sizes_from_set(size, tile_size, tile_len) < 0)
         goto error;
 
-#ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
+#ifndef DEBUG_SPLIT_TILE_READ_TILE_SIZES
     printf("@DEBUG: \n       the split tile sizes is : \n");
     for (i = 0; i < *tile_len; i++)
         printf("           size[%d] : %d \n", i, tile_size[i]);

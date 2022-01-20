@@ -101,7 +101,7 @@ ISL_ARG_BOOL(struct ppcg_options, tile, 0, "tile", 0,
 ISL_ARG_INT(struct ppcg_options, tile_size, 'S', "tile-size", "size", 32, NULL)
 
 ISL_ARG_BOOL(struct ppcg_options, split_tile, 0, "split-tile", 0, "perform split tiling")
-ISL_ARG_STR(struct ppcg_options, tile_sizes, 0, "tile-sizes", "tile-sizes", NULL, "tile sizes (for different sizes)")
+ISL_ARG_STR(struct ppcg_options, tile_sizes, 0, "tile-sizes", "tile-sizes", NULL, "tile sizes (for different sizes, e.g:{[32,32,32]} )")
 ISL_ARG_BOOL(struct ppcg_options, automatic_mixed_precision, 0, "automatic-mixed-precision", 1, "automatic mixed precision")
 ISL_ARG_INT(struct ppcg_options, automatic_mixed_precision_rate, 'R', "automatic-mixed-precision-rate", "automatic_mixed_precision_rate", 50, "The percentage of automatic mixing precision calculation, the effective range is [0,100) ( e.g: 50 means - the higher precision accounts for 50/100 )")
 
