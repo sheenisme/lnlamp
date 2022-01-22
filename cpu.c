@@ -2373,7 +2373,7 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 {
     // #define DEBUG_GENERATE
 // 调试显示参数
-#ifndef DEBUG_GENERATE
+#ifdef DEBUG_GENERATE
     printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
     printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
     printf("              the amp rate : %d ( e.g: 50 means - the higher precision accounts for 50/100 )\n", options->automatic_mixed_precision_rate);
