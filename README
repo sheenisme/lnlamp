@@ -1,15 +1,14 @@
-声明: 此代码是本人根据PPCG源代码进行修改和开发的代码，仅供个人开源使用.
+本工具是基于PPCG开发的面向Stencil计算的自动混合精度优化器(AMPO-SC),仅供学习和开源使用.
+其中amp_code_gen_test是测试优化器的开源代码仓库,有关测试的详细信息,请参见该代码仓.
 
 我的笔记:
-	1. 安装PPCG教程，详见链接: https://zhuanlan.zhihu.com/p/360210690
-	2. 推送本地代码分支到远端代码分支:
+	1. 安装PPCG教程,详见链接: https://zhuanlan.zhihu.com/p/360210690,PPCG开源网址: http://ppcg.gforge.inria.fr/.
+	2. 核心实现细节均在amp.c和cpu.c文件中(相关注释后续会添加),请注意是amp-master分支下
+	3. 推送本地代码分支到远端代码分支:
 		git push <远程主机名> <本地分支名>:<远程分支名>
 		eg: git push origin amp-master:amp-master
 
-
-以下是原作者的说明（The following is the original author’s description）:
-PPCG开源网址: http://ppcg.gforge.inria.fr/
-
+以下是原作者的说明(The following is the original author's description):
 Requirements:
 
 - automake, autoconf, libtool
