@@ -4,7 +4,8 @@
 我的笔记:
 	1. 安装PPCG教程,详见链接: https://zhuanlan.zhihu.com/p/360210690,PPCG开源网址: http://ppcg.gforge.inria.fr/.
 	2. 核心实现细节均在amp.c和cpu.c文件中(相关注释后续会添加),请注意是amp-master分支下
-	3. 推送本地代码分支到远端代码分支:
+	3. 包含分支: master(默认主分支),amp-master(ampo-sc分支),amp-model(amp模型分支)
+	4. 推送本地代码分支到远端代码分支:
 		git push <远程主机名> <本地分支名>:<远程分支名>
 		eg: git push origin amp-master:amp-master
 
