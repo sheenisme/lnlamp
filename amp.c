@@ -5564,7 +5564,7 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
     // 如果比例 < 1, 则不进行混合精度,将原始调度返回.
     if (rate < 0 || rate > 99)
     {
-        printf("\n\033[31m@ERROR:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
+        printf("\n\033[31m@WARNING:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
         return sched;
     }
 

@@ -2412,7 +2412,10 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 #endif // DEBUG_GENERATE
 		if (!reschedule || (reschedule == schedule))
 		{
-			printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL or original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
+			if (!reschedule)
+				printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
+			else
+				printf("\n\033[31m@WARNING:\n       The schedule calcuted again by amp is the same to original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			amp_prog_free(prog);
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}
