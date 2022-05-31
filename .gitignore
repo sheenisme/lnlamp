@@ -2,6 +2,7 @@
 .libs/
 .vscode/
 .cspell/
+amp_code_gen_test/
 
 Makefile
 Makefile.in
