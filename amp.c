@@ -338,31 +338,6 @@ void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
     }
 }
 
-/**
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * -------------------------
- * 分割线
- * ------------------------
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- */
-
 /* Return the name of the outer array (of structs) accessed by "access".
  */
 static const char *get_outer_array_name(__isl_keep isl_map *access)
@@ -1208,59 +1183,6 @@ __isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, a
 
     return node;
 }
-
-/**
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 这是分割线.
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- */
 
 /* Is "node" a mark node with an identifier called "name"?
  */
@@ -2136,34 +2058,6 @@ static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_arr
 
     return isl_multi_aff_identity(space);
 }
-
-/**
- * 添加复制语句到node结点的调度树中,用于从global memory读取数据到shared memory(如果设置了read)
- * 或者从shared memory写回数据到global memory（如果没有设置read）,
- * 对于映射到共享内存的数组引用组‘group’.
- * 在输入时,“node”指向内核节点,并在输出时移回那里.
- * 复制按照共享内存分块的顺序执行,复制语句实例包括一个到外部tile->depth维度的引用,以便和group分块相结合.
- * 
- * 如果我们正在执行从全局内存到共享内存的读取,并且所涉及的数组不是标量（纯量）,那么我们将整个 tile 复制到共享内存.
- * 这可能会导致一些额外的元素被复制,但它应该会导致更简单的代码（这意味着可能需要更少的寄存器）和更少的分支.
- * 否则,我们只复制内核中将要读取或已写入的元素.
- * 
- * 也就是说,额外的时间表是这样的形式:type[D -> A] -> T,其中 D 对应于内核调度的外部 tile->depth 维度,A对应于全局数组,T是对应的共享内存 tile.
- * 这些复制语句通过form的extension(扩展结点)插入到进度树中：D -> type[D -> A].
- * 其中额外的domain元素 type[D -> A] 是那些被组访问的元素.在从非标量读取的情况下,这个集合被整个共享内存块(shared memory tile)替换.
- * 
- * 如果设置了“unroll_copy_shared”选项,则指示 AST 生成器展开复制代码.
- * 
- * ......
- * 
- * 
- * 在读取的情况下,在核心计算之前插入扩展结点,在写入的情况下,在核心计算之后插入扩展结点.
- * 在读取的情况下,我们首先需要确保在核心计算之前有一些同步,以便我们可以在同步之前将‘reading’从全局内存放入共享内存.
- * 这确保在使用共享内存之前所有线程都已完成复制到共享内存中.我们还需要确保在核心计算之后有一个同步节点,以确保下一次加载到共享内存只在所有数据都被使用后发生.
- * 如果我们在外层,就不需要这种同步,因为这样就没有下一次加载了.
- * 在写入的情况下,我们需要确保在核心计算之后有一些同步,以便我们可以在同步之后将"write"从共享内存写入全局内存.
- * 除非我们在外层,否则我们在写入后还需要一个同步节点,以确保在下一次迭代写入同一共享内存之前,数据已保存到全局内存中.它还确保数据在后续迭代中被读取之前已经到达全局内存.
-*/
 
 /* Add copy statements to the schedule tree of "node"
  * for reading from global memory to shared memory (if "read" is set) or
@@ -4934,36 +4828,6 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
 }
 
 /**
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * -----------------------------------
- * 分割线
- * -----------------------------------
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- */
-
-/**
  * @brief 为了更好的划分amp划分后的filter设计的结构体.
  * left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
  * flag代表对应的filter是否存在,true即为存在.
@@ -5568,7 +5432,6 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
         return sched;
     }
 
-    // schedule = get_amp_schedule(ctx, prog, sched, rate);
     schedule = amp_reschedule(ctx, prog, sched, rate);
     if (!schedule)
     {
