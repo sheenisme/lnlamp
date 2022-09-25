@@ -4153,17 +4153,34 @@ static __isl_give isl_schedule_node *mark_outer_permutable(
 	return node;
 }
 
-/* Given a set or sequence node, return the union the filters of either all
- * (if "only_initial" is not set) or the initial (if "only_initial" is set)
+/* Given a set or sequence node, return the union of the filters of
+ * the initial (if "initial" is set) or final (if "initial" is not set)
  * direct subtrees that do not contain any suitably permutable bands
  * (according to subtree_has_permutable_bands).
+ * In the case of a set node, the subtrees can be arbitrarily reordered
+ * so any subtree is considered potentially initial and final.
+ *
+ * If the child of a subtree containing suitably permutable bands
+ * is itself a set or sequence node, then recursively collect
+ * further initial/final subtrees.
+ * In the case of an outer sequence node, only do this for the first/last child
+ * containing suitably permutable bands.
  */
 static __isl_give isl_union_set *get_non_parallel_subtree_filters(
-	__isl_keep isl_schedule_node *node, int only_initial)
+	__isl_keep isl_schedule_node *node, int initial)
 {
 	isl_space *space;
 	isl_union_set *filter;
 	int i, n;
+	int in_order;
+	enum isl_schedule_node_type type;
+
+	type = isl_schedule_node_get_type(node);
+	if (type < 0)
+		return NULL;
+	if (type != isl_schedule_node_set && type != isl_schedule_node_sequence)
+		return isl_union_set_empty_ctx(isl_schedule_node_get_ctx(node));
+	in_order = type == isl_schedule_node_sequence;
 
 	n = isl_schedule_node_n_children(node);
 	if (n < 0)
@@ -4178,9 +4195,10 @@ static __isl_give isl_union_set *get_non_parallel_subtree_filters(
 	filter = isl_union_set_empty(space);
 
 	for (i = 0; i < n; ++i) {
-		int parallelism;
+		isl_bool parallelism;
+		int child = initial ? i : n - 1 - i;
 
-		node = isl_schedule_node_child(node, i);
+		node = isl_schedule_node_child(node, child);
 		parallelism = subtree_has_permutable_bands(node);
 		if (parallelism < 0) {
 			filter = isl_union_set_free(filter);
@@ -4188,8 +4206,17 @@ static __isl_give isl_union_set *get_non_parallel_subtree_filters(
 			isl_union_set *filter_i;
 			filter_i = isl_schedule_node_filter_get_filter(node);
 			filter = isl_union_set_union(filter, filter_i);
-		} else if (only_initial)
-			break;
+		} else {
+			isl_union_set *filter_i;
+
+			node = isl_schedule_node_child(node, 0);
+			filter_i =
+			    get_non_parallel_subtree_filters(node, initial);
+			filter = isl_union_set_union(filter, filter_i);
+			node = isl_schedule_node_parent(node);
+			if (in_order)
+				break;
+		}
 		node = isl_schedule_node_parent(node);
 	}
 
@@ -4198,32 +4225,15 @@ static __isl_give isl_union_set *get_non_parallel_subtree_filters(
 	return filter;
 }
 
-/* Given a set or sequence node, return the union of the filters of
- * the direct subtrees that do not contain any suitably permutable bands
- * (according to subtree_has_permutable_bands).
- */
-static __isl_give isl_union_set *get_all_non_parallel_subtree_filters(
-	__isl_keep isl_schedule_node *node)
-{
-	return get_non_parallel_subtree_filters(node, 0);
-}
-
-/* Given a set or sequence node, return the union of the filters of
- * the initial direct subtrees that do not contain any suitably permutable
- * bands (according to subtree_has_permutable_bands).
- */
-static __isl_give isl_union_set *get_initial_non_parallel_subtree_filters(
-	__isl_keep isl_schedule_node *node)
-{
-	return get_non_parallel_subtree_filters(node, 1);
-}
-
 /* Mark all variables that are accessed by the statement instances in "domain"
  * and that are local to "prog" as requiring a declaration in the host code.
  * The statement instances in "domain" correspond to (a subset of)
  * the active instances at "node".
  * "node" is not modified by this function, except that NULL is returned
  * in case of error.
+ *
+ * If there are no local variables or if "domain" is empty,
+ * then clearly no such declarations are needed.
  */
 static __isl_give isl_schedule_node *declare_accessed_local_variables(
 	__isl_take isl_schedule_node *node, struct gpu_prog *prog,
@@ -4231,9 +4241,15 @@ static __isl_give isl_schedule_node *declare_accessed_local_variables(
 {
 	isl_union_pw_multi_aff *contraction;
 	isl_union_set *arrays;
+	isl_bool empty;
 	int i;
 
 	if (!ppcg_scop_any_hidden_declarations(prog->scop))
+		return node;
+	empty = isl_union_set_is_empty(domain);
+	if (empty < 0)
+		return isl_schedule_node_free(node);
+	if (empty)
 		return node;
 	contraction = isl_schedule_node_get_subtree_contraction(node);
 	domain = isl_union_set_copy(domain);
@@ -4243,7 +4259,7 @@ static __isl_give isl_schedule_node *declare_accessed_local_variables(
 	for (i = 0; i < prog->n_array; ++i) {
 		isl_space *space;
 		isl_set *set;
-		int empty;
+		isl_bool empty;
 
 		if (!prog->array[i].local)
 			continue;
@@ -4264,22 +4280,18 @@ error:
 	return isl_schedule_node_free(node);
 }
 
-/* If "node" points to a set node, then separate its children
- * into subtrees that have suitably permutable bands and
- * those that do not.
- * Adjust the schedule tree in order to execute the second group
- * after the first group and return a pointer to the first group,
- * assuming there are any such subtrees.
- * If "node" points to a sequence node, then separate the initial
+/* If "node" points to a set or sequence node, then separate the initial
+ * (if "initial" is set) or final (if "initial" is not set)
  * children that do not have suitably permutable bands and
  * return a pointer to the subsequence of children that do have such bands,
  * assuming there are any such subtrees.
  *
- * In both cases, mark all local variables in "prog" that are accessed by
+ * Mark all local variables in "prog" that are accessed by
  * the group without permutable bands as requiring a declaration on the host.
  */
-static __isl_give isl_schedule_node *isolate_permutable_subtrees(
-	__isl_take isl_schedule_node *node, struct gpu_prog *prog)
+static __isl_give isl_schedule_node *partial_isolate_permutable_subtrees(
+	__isl_take isl_schedule_node *node, struct gpu_prog *prog,
+	int initial)
 {
 	isl_union_set *filter;
 	enum isl_schedule_node_type type;
@@ -4287,16 +4299,36 @@ static __isl_give isl_schedule_node *isolate_permutable_subtrees(
 	if (!node)
 		return NULL;
 	type = isl_schedule_node_get_type(node);
-	if (type == isl_schedule_node_set) {
-		filter = get_all_non_parallel_subtree_filters(node);
-		node = declare_accessed_local_variables(node, prog, filter);
-		node = isl_schedule_node_order_after(node, filter);
-	} else if (type == isl_schedule_node_sequence) {
-		filter = get_initial_non_parallel_subtree_filters(node);
-		node = declare_accessed_local_variables(node, prog, filter);
-		node = isl_schedule_node_order_before(node, filter);
-	}
+	if (type != isl_schedule_node_set && type != isl_schedule_node_sequence)
+		return node;
 
+	filter = get_non_parallel_subtree_filters(node, initial);
+	node = declare_accessed_local_variables(node, prog, filter);
+	if (initial)
+		node = isl_schedule_node_order_before(node, filter);
+	else
+		node = isl_schedule_node_order_after(node, filter);
+
+	return node;
+}
+
+/* If "node" points to a set or sequence node, then separate the initial and
+ * final children that do not have suitably permutable bands and
+ * return a pointer to the subsequence of children that do have such bands.
+ *
+ * In the case of a set node, the children can be arbitrarily reordered,
+ * so they can all be considered initial and final.
+ * Separate them out as final children (first) so that they are executed
+ * after the other children.
+ * Otherwise the arrays partially written by the non-permutable subtrees
+ * could get overwritten by the copy-out corresponding to the other subtrees,
+ * requiring those arrays to be copied in first.
+ */
+static __isl_give isl_schedule_node *isolate_permutable_subtrees(
+	__isl_take isl_schedule_node *node, struct gpu_prog *prog)
+{
+	node = partial_isolate_permutable_subtrees(node, prog, 0);
+	node = partial_isolate_permutable_subtrees(node, prog, 1);
 	return node;
 }
 
@@ -4830,6 +4862,18 @@ static __isl_give isl_union_set *extract_local_accesses(struct gpu_prog *prog,
  * "local_flow" is equal to "inner_band_flow", except that the domain
  * and the range have been intersected with intermediate filters
  * on children of sets or sequences.
+ *
+ * "local_may_overwrite" and "outer_may_overwrite" are subsets
+ * of tagged dependences between potentially live-out write accesses and
+ * write accesses to the same array (but not necessarily the same element)
+ * that cause the array to be copied out from the device.
+ * Such a dependence means that the array needs to be copied in first
+ * to ensure that the potentially live-out write access is not overwritten
+ * by the copy-ouy from the device.
+ * "local_may_overwrite" are those that are local to a given iteration
+ * of the outer band nodes with respect to the current node.
+ * "outer_may_overwrite" are those where the domain may be executed
+ * before the range.
  */
 struct ppcg_may_persist_data {
 	isl_union_pw_multi_aff *tagger;
@@ -4837,17 +4881,52 @@ struct ppcg_may_persist_data {
 	isl_union_map *local_flow;
 	isl_union_map *inner_band_flow;
 	isl_union_map *may_persist_flow;
+
+	isl_union_map *local_may_overwrite;
+	isl_union_map *outer_may_overwrite;
 };
+
+/* Update the may-overwrite information in "data"
+ * based on the partial schedule "partial" of some band ancestor node.
+ * The partial schedule is formulated in terms of the tagged
+ * original statement instances.
+ *
+ * "outer_may_overwrite" is extended with those dependences
+ * that are local to the outer nodes, but where the live-out write access
+ * appears before copy-out inducing access in the current band node.
+ * "local_may_overwrite" is narrowed down to those dependences
+ * that are also local to the current band node.
+ */
+static isl_stat update_may_overwrite_at_band(
+	__isl_keep isl_multi_union_pw_aff *partial,
+	struct ppcg_may_persist_data *data)
+{
+	isl_union_map *local, *outer;
+
+	outer = isl_union_map_copy(data->local_may_overwrite);
+	outer = isl_union_map_lex_lt_at_multi_union_pw_aff(outer,
+				isl_multi_union_pw_aff_copy(partial));
+	outer = isl_union_map_union(data->outer_may_overwrite, outer);
+	data->outer_may_overwrite = outer;
+
+	local = data->local_may_overwrite;
+	local = isl_union_map_eq_at_multi_union_pw_aff(local,
+				isl_multi_union_pw_aff_copy(partial));
+	data->local_may_overwrite = local;
+
+	return isl_stat_ok;
+}
 
 /* Update the information in "data" based on the band ancestor "node".
  *
- * In particular, we restrict the dependences in data->local_flow
+ * In particular, update the may-overwrite information.
+ * Also, restrict the dependences in data->local_flow
  * to those dependence where the source and the sink occur in
  * the same iteration of the given band node.
  * We also update data->inner_band_flow to the new value of
  * data->local_flow.
  */
-static int update_may_persist_at_band(__isl_keep isl_schedule_node *node,
+static isl_stat update_may_persist_at_band(__isl_keep isl_schedule_node *node,
 	struct ppcg_may_persist_data *data)
 {
 	isl_multi_union_pw_aff *partial;
@@ -4855,7 +4934,7 @@ static int update_may_persist_at_band(__isl_keep isl_schedule_node *node,
 	isl_union_map *flow;
 
 	if (isl_schedule_node_band_n_member(node) == 0)
-		return 0;
+		return isl_stat_ok;
 
 	partial = isl_schedule_node_band_get_partial_schedule(node);
 	contraction = isl_schedule_node_get_subtree_contraction(node);
@@ -4864,6 +4943,9 @@ static int update_may_persist_at_band(__isl_keep isl_schedule_node *node,
 	partial = isl_multi_union_pw_aff_pullback_union_pw_multi_aff(partial,
 				isl_union_pw_multi_aff_copy(data->tagger));
 
+	if (update_may_overwrite_at_band(partial, data) < 0)
+		partial = isl_multi_union_pw_aff_free(partial);
+
 	flow = data->local_flow;
 	flow = isl_union_map_eq_at_multi_union_pw_aff(flow, partial);
 	data->local_flow = flow;
@@ -4871,7 +4953,7 @@ static int update_may_persist_at_band(__isl_keep isl_schedule_node *node,
 	isl_union_map_free(data->inner_band_flow);
 	data->inner_band_flow = isl_union_map_copy(data->local_flow);
 
-	return 0;
+	return isl_stat_ok;
 }
 
 /* Given a set of local reaching domain elements "domain",
@@ -4890,27 +4972,36 @@ static __isl_give isl_union_set *expand_and_tag(
 	return domain;
 }
 
+/* Apply the filter "filter" to both domain and range of "flow" and
+ * return the result.
+ */
+static __isl_give isl_union_map *apply_filter(__isl_take isl_union_map *flow,
+	__isl_take isl_union_set *filter)
+{
+	flow = isl_union_map_intersect_domain(flow, isl_union_set_copy(filter));
+	flow = isl_union_map_intersect_range(flow, filter);
+	return flow;
+}
+
 /* Given a filter node that is the child of a set or sequence node,
- * restrict data->local_flow to refer only to those elements
- * in the filter of the node.
+ * restrict data->local_flow and data->local_may_overwrite
+ * to refer only to those elements in the filter of the node.
  * "contraction" maps the leaf domain elements of the schedule tree
  * to the corresponding domain elements at (the parent of) "node".
  */
-static int filter_flow(__isl_keep isl_schedule_node *node,
+static isl_stat filter_flow(__isl_keep isl_schedule_node *node,
 	struct ppcg_may_persist_data *data,
 	__isl_take isl_union_pw_multi_aff *contraction)
 {
 	isl_union_set *filter;
-	isl_union_map *flow;
 
-	flow = data->local_flow;
 	filter = isl_schedule_node_filter_get_filter(node);
 	filter = expand_and_tag(filter, contraction, data);
-	flow = isl_union_map_intersect_domain(flow, isl_union_set_copy(filter));
-	flow = isl_union_map_intersect_range(flow, filter);
-	data->local_flow = flow;
+	data->local_may_overwrite = apply_filter(data->local_may_overwrite,
+					isl_union_set_copy(filter));
+	data->local_flow = apply_filter(data->local_flow, filter);
 
-	return 0;
+	return isl_stat_ok;
 }
 
 /* Given a filter node "node", collect the filters on all preceding siblings
@@ -4981,37 +5072,18 @@ static void remove_external_flow(struct ppcg_may_persist_data *data,
 							flow);
 }
 
-/* Update the information in "data" based on the filter ancestor "node".
- * We only need to modify anything if the filter is the child
- * of a set or sequence node.
- *
- * In the case of a sequence, we remove the dependences between
- * statement instances that are both executed either before or
- * after the subtree that will be mapped to a kernel, within
- * the same iteration of outer bands.
- *
- * In both cases, we restrict data->local_flow to the current child.
+/* Remove those flow dependences from data->may_persist_flow
+ * that flow between statement instances that are both executed either before or
+ * after "node", within the same iteration of outer bands.
+ * "contraction" maps the leaf domain elements of the schedule tree
+ * to the corresponding elements of the filters of "domain" and its siblings.
  */
-static int update_may_persist_at_filter(__isl_keep isl_schedule_node *node,
-	struct ppcg_may_persist_data *data)
+static void remove_all_external_flow(__isl_keep isl_schedule_node *node,
+	struct ppcg_may_persist_data *data,
+	__isl_keep isl_union_pw_multi_aff *contraction)
 {
-	enum isl_schedule_node_type type;
-	isl_schedule_node *parent;
 	isl_space *space;
-	isl_union_pw_multi_aff *contraction;
 	isl_union_set *before, *after, *filter;
-
-	type = isl_schedule_node_get_parent_type(node);
-	if (type != isl_schedule_node_sequence && type != isl_schedule_node_set)
-		return 0;
-
-	parent = isl_schedule_node_copy(node);
-	parent = isl_schedule_node_parent(parent);
-	contraction = isl_schedule_node_get_subtree_contraction(parent);
-	isl_schedule_node_free(parent);
-
-	if (type == isl_schedule_node_set)
-		return filter_flow(node, data, contraction);
 
 	filter = isl_schedule_node_filter_get_filter(node);
 	space = isl_union_set_get_space(filter);
@@ -5023,6 +5095,84 @@ static int update_may_persist_at_filter(__isl_keep isl_schedule_node *node,
 
 	remove_external_flow(data, before, contraction);
 	remove_external_flow(data, after, contraction);
+}
+
+/* Update the may-overwrite information in "data"
+ * based on the filter ancestor "node".
+ * "parent_type" is the type of the parent of the filter and
+ * is either isl_schedule_node_set or isl_schedule_node_sequence.
+ * "contraction" maps the leaf domain elements of the schedule tree
+ * to the corresponding domain elements at (the parent of) "node".
+ *
+ * First collect the filters of the siblings that may be executed
+ * before the current sibling.  In the case of a sequence,
+ * these are the previous sibling.  In the case of a set,
+ * these are all siblings of the current node.
+ * "outer_may_overwrite" is then extended with those dependences
+ * that are local to the outer nodes, but where the live-out write access
+ * appears in one of those siblings.
+ */
+static isl_stat update_may_overwrite_at_filter(
+	__isl_keep isl_schedule_node *node, struct ppcg_may_persist_data *data,
+	enum isl_schedule_node_type parent_type,
+	__isl_keep isl_union_pw_multi_aff *contraction)
+{
+	isl_ctx *ctx;
+	isl_union_set *may_before;
+	isl_union_map *outer;
+
+	ctx = isl_schedule_node_get_ctx(node);
+	may_before = isl_union_set_empty_ctx(ctx);
+	may_before = add_previous_filters(may_before, node);
+	if (parent_type == isl_schedule_node_set)
+		may_before = add_next_filters(may_before, node);
+
+	may_before = isl_union_set_preimage_union_pw_multi_aff(may_before,
+			    isl_union_pw_multi_aff_copy(contraction));
+	outer = isl_union_map_copy(data->local_may_overwrite);
+	outer = isl_union_map_intersect_domain_wrapped_domain_union_set(outer,
+								    may_before);
+	data->outer_may_overwrite =
+	    isl_union_map_union(data->outer_may_overwrite, outer);
+
+	return isl_stat_ok;
+}
+
+/* Update the information in "data" based on the filter ancestor "node".
+ * We only need to modify anything if the filter is the child
+ * of a set or sequence node.
+ *
+ * In particular, update the may-overwrite information.
+ *
+ * In the case of a sequence, we remove the dependences between
+ * statement instances that are both executed either before or
+ * after the subtree that will be mapped to a kernel, within
+ * the same iteration of outer bands.
+ *
+ * In both cases, data->local_flow and data->local_may_overwrite
+ * are restricted to the current child.
+ */
+static isl_stat update_may_persist_at_filter(__isl_keep isl_schedule_node *node,
+	struct ppcg_may_persist_data *data)
+{
+	enum isl_schedule_node_type type;
+	isl_schedule_node *parent;
+	isl_union_pw_multi_aff *contraction;
+
+	type = isl_schedule_node_get_parent_type(node);
+	if (type != isl_schedule_node_sequence && type != isl_schedule_node_set)
+		return isl_stat_ok;
+
+	parent = isl_schedule_node_copy(node);
+	parent = isl_schedule_node_parent(parent);
+	contraction = isl_schedule_node_get_subtree_contraction(parent);
+	isl_schedule_node_free(parent);
+
+	if (update_may_overwrite_at_filter(node, data, type, contraction) < 0)
+		contraction = isl_union_pw_multi_aff_free(contraction);
+
+	if (type == isl_schedule_node_sequence)
+		remove_all_external_flow(node, data, contraction);
 
 	return filter_flow(node, data, contraction);
 }
@@ -5060,11 +5210,69 @@ static isl_stat update_may_persist_at(__isl_keep isl_schedule_node *node,
 	return isl_stat_ok;
 }
 
-/* Determine the set of array elements that may need to be perserved
+/* Initialize the "local_may_overwrite" and "outer_may_overwrite" fields
+ * of "data".
+ * "domain" contains the original statement instances covered
+ * by the copy-out, i.e.,
+ * those that correspond to the domains of the access relations in "prog".
+ * "copy_out" contains the outer arrays that will be copied out,
+ * relative to the statement instances that write to (some element of)
+ * the arrays.
+ *
+ * First consider the potential live-out writes from statement instances
+ * outside of "domain" and add the corresponding reference tags.
+ * Similarly, extend "copy_out" to map to the inner arrays and
+ * to include the reference tags.
+ *
+ * The initial value of "local_may_overwrite" maps the domain elements
+ * of these two relations that map to some common array element.
+ * The initial value of "outer_may_overwrite" is empty.
+ */
+static void init_may_overwrite(struct ppcg_may_persist_data *data,
+	__isl_keep isl_union_set *domain, __isl_keep isl_union_map *copy_out,
+	struct gpu_prog *prog)
+{
+	isl_union_map *live_out, *tagged_live_out, *tagged_may_writes;
+
+	live_out = isl_union_map_copy(prog->scop->live_out);
+	live_out = isl_union_map_subtract_domain(live_out,
+						isl_union_set_copy(domain));
+	tagged_may_writes = isl_union_map_copy(prog->scop->tagged_may_writes);
+	tagged_live_out =
+	    isl_union_map_intersect_domain_factor_domain(tagged_may_writes,
+								live_out);
+	copy_out = isl_union_map_copy(copy_out);
+	copy_out = isl_union_map_apply_range(copy_out,
+					isl_union_map_copy(prog->to_inner));
+	tagged_may_writes = isl_union_map_copy(prog->scop->tagged_may_writes);
+	tagged_may_writes = isl_union_map_universe(tagged_may_writes);
+	copy_out =
+		isl_union_map_intersect_domain_factor_domain(tagged_may_writes,
+							    copy_out);
+
+	data->local_may_overwrite = isl_union_map_apply_range(tagged_live_out,
+					    isl_union_map_reverse(copy_out));
+	data->outer_may_overwrite = isl_union_map_empty_ctx(prog->ctx);
+}
+
+/* Determine the set of array elements that may need to be preserved
  * by a kernel constructed from the subtree at "node".
  * This includes the set of array elements that may need to be preserved
- * by the entire scop (prog->may_persist) and the elements for which
- * there is a potential flow dependence that may cross a kernel launch.
+ * by the entire scop (prog->may_persist), the elements for which
+ * there is a potential flow dependence that may cross a kernel launch and
+ * the elements that are live-out that may get overwritten by a copy-out.
+ * "domain" contains the original statement instances, i.e.,
+ * those that correspond to the domains of the access relations in "prog".
+ * "copy_out" contains the outer arrays that will be copied out,
+ * relative to the statement instances that write to (some element of)
+ * the arrays.
+ *
+ * To determine the third set, relate all potential live-out write instances
+ * outside of "domain" to statement instances (in "domain")
+ * that write to the same array and collect those where
+ * the live-out write may occur before the other write.
+ * These live-out writes will be overwritten by the copy-out,
+ * so they need to be copied in first.
  *
  * To determine the second set, we start from all flow dependences.
  * From this set of dependences, we remove those that cannot possibly
@@ -5095,11 +5303,11 @@ static isl_stat update_may_persist_at(__isl_keep isl_schedule_node *node,
  * preserved by the entire scop.
  */
 static __isl_give isl_union_set *node_may_persist(
-	__isl_keep isl_schedule_node *node, struct gpu_prog *prog)
+	__isl_keep isl_schedule_node *node, __isl_keep isl_union_set *domain,
+	__isl_keep isl_union_map *copy_out, struct gpu_prog *prog)
 {
 	struct ppcg_may_persist_data data;
 	isl_union_pw_multi_aff *contraction;
-	isl_union_set *domain;
 	isl_union_set *persist;
 	isl_union_map *flow, *local_flow;
 
@@ -5109,6 +5317,9 @@ static __isl_give isl_union_set *node_may_persist(
 	data.local_flow = isl_union_map_copy(flow);
 	data.inner_band_flow = isl_union_map_copy(flow);
 	data.may_persist_flow = flow;
+
+	init_may_overwrite(&data, domain, copy_out, prog);
+
 	if (isl_schedule_node_foreach_ancestor_top_down(node,
 					&update_may_persist_at, &data) < 0)
 		data.may_persist_flow =
@@ -5116,16 +5327,16 @@ static __isl_give isl_union_set *node_may_persist(
 	flow = data.may_persist_flow;
 	isl_union_map_free(data.local_flow);
 
-	domain = isl_schedule_node_get_domain(node);
-	contraction = isl_schedule_node_get_subtree_contraction(node);
-	domain = isl_union_set_preimage_union_pw_multi_aff(domain,
-				    contraction);
+	domain = isl_union_set_copy(domain);
 	domain = isl_union_set_preimage_union_pw_multi_aff(domain,
 				    isl_union_pw_multi_aff_copy(data.tagger));
 	flow = isl_union_map_subtract_domain(flow, isl_union_set_copy(domain));
 	local_flow = data.inner_band_flow;
 	local_flow = isl_union_map_intersect_range(local_flow, domain);
 	flow = isl_union_map_subtract(flow, local_flow);
+
+	flow = isl_union_map_union(flow, data.outer_may_overwrite);
+	isl_union_map_free(data.local_may_overwrite);
 
 	persist = isl_union_map_domain(flow);
 	persist = isl_union_set_apply(persist,
@@ -5156,7 +5367,7 @@ static __isl_give isl_union_set *node_may_persist(
  * Any array elements that is read without first being written inside
  * the subtree "node" needs to be copied in.
  * Furthermore, if there are any array elements that
- * are copied out, but that may not be written inside "node, then
+ * are copied out, but that may not be written inside "node", then
  * they also need to be copied in to ensure that the value after execution
  * is the same as the value before execution, at least for those array
  * elements that may have their values preserved by the scop or that
@@ -5199,16 +5410,16 @@ static __isl_give isl_schedule_node *add_to_from_device(
 					isl_union_map_copy(prefix), 0);
 	may_write = isl_union_map_apply_range(may_write,
 					isl_union_map_copy(prog->to_outer));
-	may_write = isl_union_map_apply_domain(may_write,
+	copy_out = approximate_copy_out(may_write, prog);
+	may_persist = node_may_persist(node, domain, copy_out, prog);
+	copy_out = isl_union_map_apply_domain(copy_out,
 					isl_union_map_copy(prefix));
-	may_write = approximate_copy_out(may_write, prog);
-	copy_out = isl_union_map_copy(may_write);
+	may_write = isl_union_map_copy(copy_out);
 	may_write = isl_union_map_apply_range(may_write,
 					isl_union_map_copy(prog->to_inner));
 	must_write = isl_union_map_copy(prog->must_write);
 	must_write = isl_union_map_apply_domain(must_write,
 					isl_union_map_copy(prefix));
-	may_persist = node_may_persist(node, prog);
 	may_write = isl_union_map_intersect_range(may_write, may_persist);
 	not_written = isl_union_map_subtract(may_write, must_write);
 
