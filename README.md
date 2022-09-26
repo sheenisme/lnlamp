@@ -1,9 +1,9 @@
-循环嵌套级自动混合精度(Loop nesting level automatic mixed precision, LNLAMP)[https://gitee.com/sheenisme/lnlamp.git],是在AMPO-SC[https://gitee.com/sheenisme/ppcg.git]的基础上进一步发展而来的自动混合精度优化器。其核心是利用多面体编译技术对循环嵌套进行自动混合精度优化，比ampo-sc的应用范围更广。
+循环嵌套级自动混合精度(Loop nesting level automatic mixed precision, LNLAMP)[ https://gitee.com/sheenisme/lnlamp.git ],是在AMPO-SC[ https://gitee.com/sheenisme/ppcg.git ]的基础上进一步发展而来的自动混合精度优化器。其核心是利用多面体编译技术对循环嵌套进行自动混合精度优化，比ampo-sc的应用范围更广。
 
 
 Notes:
 1. 安装PPCG教程(该工具基于ppcg实现),详见链接: https://zhuanlan.zhihu.com/p/360210690, PPCG开源网址: http://ppcg.gforge.inria.fr/.
-2. 为了方便国内外的学者和用户一起研究和学习，该仓库同步更新于gitee[https://gitee.com/sheenisme/lnlamp.git]和github[https://github.com/sheenisme/lnlamp.git]。
+2. 为了方便国内外的学者和用户一起研究和学习，该仓库同步更新于gitee[ https://gitee.com/sheenisme/lnlamp.git ]和github[ https://github.com/sheenisme/lnlamp.git ]。
 3. polybench_benchmark是测试该优化器的开源代码仓库,有关测试的详细信息,请参见该代码仓库(仅开源至github).
 4. 推送本地代码分支到远端代码分支:
 	git push <远程主机名> <本地分支名>:<远程分支名>
