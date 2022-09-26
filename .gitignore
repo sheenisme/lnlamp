@@ -3,6 +3,8 @@
 .vscode/
 .cspell/
 
+polybench_benchmark/
+
 Makefile
 Makefile.in
 aclocal.m4
