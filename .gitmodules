@@ -6,4 +6,5 @@
 	url = git://repo.or.cz/pet.git
 [submodule "polybench_benchmark"]
 	path = polybench_benchmark
-	url = https://github.com/sheenisme/polybench_benchmark.git
+	url = git@gitee.com:sheenisme/polybench_benchmark.git
+	url = git@github.com:sheenisme/polybench_benchmark.git
