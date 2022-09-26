@@ -8,7 +8,6 @@ Notes:
 4. 推送本地代码分支到远端代码分支:
 	git push <远程主机名> <本地分支名>:<远程分支名>
 	eg: git push origin master
-		git push github-origin master
 
 以下是原作者的说明(The following is the original author's description):
 Requirements:
