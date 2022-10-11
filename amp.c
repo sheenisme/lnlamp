@@ -1121,8 +1121,14 @@ char *amp_get_lower_precision_type(char *type)
     // 生成更低精度的
     if (strcmp("double", type) == 0)
         return "float";
-    else
-        return "bfloat";
+    else if (strcmp("float", type) == 0)
+        return "int";
+    else if (strcmp("int", type) == 0)
+        return "short int";
+    else if (strcmp("char", type) == 0)
+        return "char";
+    else if (strcmp("char *", type) == 0)
+        return "char";
 }
 
 /* Does "array" need to be allocated on the device?
@@ -1249,7 +1255,8 @@ static int node_is_thread(__isl_keep isl_schedule_node *node)
  * the tile with the smallest depth is used.  If both have the same depth,
  * then the private tile is used.
  */
-enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group *group) {
+enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group *group)
+{
     if (group->shared_tile)
         return ppcg_access_shared;
     return ppcg_access_global;
@@ -1258,20 +1265,23 @@ enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group 
 /* Print the name of the local copy of a given group of array references.
  */
 __isl_give isl_printer *amp_array_ref_group_print_name(
-    struct amp_array_ref_group *group, __isl_take isl_printer *p) {
+    struct amp_array_ref_group *group, __isl_take isl_printer *p)
+{
     int global = 0;
     enum ppcg_group_access_type type;
 
     type = amp_array_ref_group_type(group);
     if (type == ppcg_access_shared)
         p = isl_printer_print_str(p, "amp_lower_");
-    else {
+    else
+    {
         global = 1;
         p = isl_printer_print_str(p, "amp_lower_");
     }
 
     p = isl_printer_print_str(p, group->array->name);
-    if (!global && group->local_array->n_group > 1) {
+    if (!global && group->local_array->n_group > 1)
+    {
         p = isl_printer_print_str(p, "_");
         p = isl_printer_print_int(p, group->nr);
     }
@@ -2335,7 +2345,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 }
 
 static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
-                                                                 __isl_take isl_schedule_node *node, int read) {
+                                                                 __isl_take isl_schedule_node *node, int read)
+{
     // #define DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     isl_union_map *access;
@@ -2354,7 +2365,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     char *local_name;
     isl_multi_aff *tiling;
 
-    if (!amp_array_is_scalar(group->array)) {
+    if (!amp_array_is_scalar(group->array))
+    {
         return node;
     }
 
@@ -2383,7 +2395,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
 
     access = anchored_non_local_accesses(kernel, group, node, read);
     empty = isl_union_map_is_empty(access);
-    if (empty < 0 || empty) {
+    if (empty < 0 || empty)
+    {
         isl_union_map_free(access);
         if (empty < 0)
             return isl_schedule_node_free(node);
@@ -2419,7 +2432,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     tiling = isl_multi_aff_set_tuple_name(tiling, isl_dim_out, local_name);
     free(local_name);
 
-    if (tiling) {
+    if (tiling)
+    {
         ma = isl_multi_aff_copy(tiling);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         printf("@DEBUG: \n       the ma(tiling) is: \n");
@@ -2433,7 +2447,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
         isl_multi_aff_dump(ma);
         printf("\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
-    } else {
+    }
+    else
+    {
         ma = isl_multi_aff_copy(from_access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         printf("@DEBUG: \n       the ma(from_access) is: \n");
@@ -2514,11 +2530,14 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     printf("\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
-    if (read) {
+    if (read)
+    {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_before(node, graft);
-    } else {
+    }
+    else
+    {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_after(node, graft);
@@ -3014,7 +3033,7 @@ static __isl_give isl_map *remove_strides(__isl_take isl_map *access,
 static isl_bool can_tile(__isl_keep isl_map *access,
                          struct amp_array_tile *tile)
 {
-// #define DEBUG_CAN_TILE
+    // #define DEBUG_CAN_TILE
 
     int i;
     isl_bool has_strides, valid;
@@ -3091,7 +3110,6 @@ static isl_bool can_tile(__isl_keep isl_map *access,
         printf("@DEBUG: \n       get_range_lattice_tile is: \n");
         isl_fixed_box_dump(box);
 #endif // DEBUG_CAN_TILE
-       
 
         offset = isl_fixed_box_get_offset(box);
         size = isl_fixed_box_get_size(box);
@@ -3407,7 +3425,7 @@ static int check_requires_unroll(struct amp_group_data *data,
 static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
                                           struct amp_array_ref_group *group, struct amp_group_data *data)
 {
-// #define DEBUG_COMPUTE_GROUP_BOUNDS_CORE
+    // #define DEBUG_COMPUTE_GROUP_BOUNDS_CORE
 
     isl_ctx *ctx = isl_space_get_ctx(group->array->space);
     isl_union_map *access, *local;
@@ -3460,7 +3478,8 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     printf("@DEBUG: \n       the coalesced is: %d \n", coalesced);
 #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
     // if (!no_reuse || !coalesced)
-    if (1) {
+    if (1)
+    {
         group->shared_tile = amp_array_tile_create(ctx, group->array->n_index);
         acc = shared_access(group, access, data);
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
@@ -4513,7 +4532,7 @@ static __isl_give isl_multi_aff *strided_tile(
  */
 static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group)
 {
-// #define DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
+    // #define DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     int i;
     struct amp_array_tile *tile;
@@ -4561,7 +4580,7 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     printf("@DEBUG: \n       when i(%d) and tile->n(%d), tiling is:\n", i, tile->n);
     isl_multi_aff_dump(tiling);
     printf("\n");
-#endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING    
+#endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     lb = isl_multi_aff_zero(space);
     for (i = 0; i < tile->n; ++i)
@@ -4570,7 +4589,7 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
         lb = isl_multi_aff_set_aff(lb, i, lb_i);
     }
     lb = isl_multi_aff_pullback_multi_aff(lb, insert_array);
-    
+
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
     printf("@DEBUG: \n       the final lb is: \n");
     isl_multi_aff_dump(lb);
@@ -4962,7 +4981,7 @@ error:
  */
 __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
 {
-    // #define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+#define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
     isl_constraint_list *constraint_list;
     isl_size constraint_list_deepth;
     isl_constraint *con_front, *con_back;
@@ -4989,14 +5008,19 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
 
     // 获取isl_constraint_list的数量（维度）
     constraint_list_deepth = isl_constraint_list_n_constraint(constraint_list);
+
+    // 初始化constraint_list_dim
+    isl_size constraint_list_dim = 0;
+    // 如果是奇数，从1开始划分。
     if (constraint_list_deepth % 2 == 1)
     {
-        printf("\n\033[31m@ERROR:\n       There constraint_list_deepth is odd , which is illegal !!! \033[0m\n\n");
-        goto error;
+        constraint_list_dim = 1;
+        // printf("\n\033[31m@ERROR:\n       There constraint_list_deepth is odd , which is illegal !!! \033[0m\n\n");
+        // goto error;
     }
 
     // 依次获取,修改约束列表
-    for (isl_size constraint_list_dim = 0; constraint_list_dim < constraint_list_deepth; constraint_list_dim += 2)
+    for (; constraint_list_dim < constraint_list_deepth; constraint_list_dim += 2)
     {
         /**
          * @brief 如果是要修改的深度(deepth)的约束,则将't >= x'修改为't >= amp_partition_val + x + 1',后面将该约束存放在amp_basic_set的right中;
@@ -5038,7 +5062,7 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
 
             /**
              * @brief 先获取新的左右filter需要用到的仿射表达式.
-             * 
+             *
              * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
              *       所以先求新y,然后就顺理成章得到了新x.
              */
@@ -5161,7 +5185,7 @@ struct amp_union_set_list
  */
 __isl_give struct amp_union_set_list *amp_get_filters(__isl_keep isl_ctx *ctx, __isl_take isl_union_set *domain, int rate)
 {
-    // #define DEBUG_AMP_GET_FILTERS
+#define DEBUG_AMP_GET_FILTERS
 
     // 定义要拆分的循环的dim为1（目前拆第一层循环）
     int separate_dim = 1;
@@ -5196,7 +5220,7 @@ __isl_give struct amp_union_set_list *amp_get_filters(__isl_keep isl_ctx *ctx, _
 
     /**
      * @brief 如果是该语句是不含循环约束的语句实例，则该语句同时包含进左右分支当中.
-     *        
+     *
      * @note  skip代表左右分支拆分后插入到各自的isl_union_set_list（uset_list_left, uset_list_right）时需要跳过的大小.
      */
     int skip_left = 0;
@@ -5407,6 +5431,58 @@ error:
     return sched;
 }
 
+/* If "node" is a band, then check if it has any consecutive
+ * leaves that should be merged together and store the results
+ * in "grouping".
+ *
+ * In particular, call group_subsequence on each consecutive
+ * sequence of (filtered) leaves among the children of "node".
+ */
+static isl_bool detect_band_node(__isl_keep isl_schedule_node *node, void *user)
+{
+    int i, n, first;
+    struct amp_prog *prog = user;
+
+    if (isl_schedule_node_get_type(node) != isl_schedule_node_band)
+        return isl_bool_true;
+
+    n = isl_schedule_node_n_children(node);
+    if (n < 0)
+        return isl_bool_error;
+
+    isl_schedule_node_dump(node);
+    printf("\n n 是： %d \n\n\n", n);
+
+    // first = -1;
+    // for (i = 0; i < n; ++i)
+    // {
+    //     isl_schedule_node *child;
+    //     enum isl_schedule_node_type type;
+
+    //     // child = isl_schedule_node_get_child(node, i);
+    //     // child = isl_schedule_node_child(child, 0);
+    //     // type = isl_schedule_node_get_type(child);
+    //     // isl_schedule_node_free(child);
+
+    //     // if (first >= 0 && type != isl_schedule_node_leaf)
+    //     // {
+    //     //     if (group_subsequence(node, first, i - first,
+    //     //                           grouping) < 0)
+    //     //         return isl_bool_error;
+    //     //     first = -1;
+    //     // }
+    //     // if (first < 0 && type == isl_schedule_node_leaf)
+    //     //     first = i;
+    // }
+    // if (first >= 0)
+    // {
+    //     if (group_subsequence(node, first, n - first, grouping) < 0)
+    //         return isl_bool_error;
+    // }
+
+    return isl_bool_true;
+}
+
 // Compute a new schedule based on the sched
 __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched)
 {
@@ -5432,6 +5508,7 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
         return sched;
     }
 
+    // isl_schedule_foreach_schedule_node_top_down(sched, &detect_band_node, &prog);
     schedule = amp_reschedule(ctx, prog, sched, rate);
     if (!schedule)
     {

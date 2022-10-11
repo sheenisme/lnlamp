@@ -493,8 +493,8 @@ static __isl_give isl_printer *stmt_print_global_index(
 
 	if (amp_array_is_scalar(array))
 	{
-		if (!amp_array_is_read_only_scalar(array))
-			p = isl_printer_print_str(p, "*");
+		// if (!amp_array_is_read_only_scalar(array))
+		// 	p = isl_printer_print_str(p, "*");
 		p = isl_printer_print_str(p, array->name);
 		return p;
 	}
@@ -524,13 +524,18 @@ static __isl_give isl_printer *ppcg_kernel_print_copy(__isl_take isl_printer *p,
 	if (stmt->u.c.read)
 	{
 		p = stmt_print_local_index(p, stmt);
-		p = isl_printer_print_str(p, " = (float)");
+		// p = isl_printer_print_str(p, " = (float)");
+		p = isl_printer_print_str(p, " = (");
+		p = isl_printer_print_str(p, amp_get_lower_precision_type(stmt->u.c.array->type));
+		p = isl_printer_print_str(p, ")");
 		p = stmt_print_global_index(p, stmt);
 	}
 	else
 	{
 		p = stmt_print_global_index(p, stmt);
-		p = isl_printer_print_str(p, " = (double)");
+		p = isl_printer_print_str(p, " = (");
+		p = isl_printer_print_str(p, stmt->u.c.array->type);
+		p = isl_printer_print_str(p, ")");
 		p = stmt_print_local_index(p, stmt);
 	}
 	p = isl_printer_print_str(p, ";");
