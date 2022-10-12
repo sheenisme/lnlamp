@@ -1125,10 +1125,8 @@ char *amp_get_lower_precision_type(char *type)
         return "int";
     else if (strcmp("int", type) == 0)
         return "short int";
-    else if (strcmp("char", type) == 0)
-        return "char";
-    else if (strcmp("char *", type) == 0)
-        return "char";
+    else
+        return type;
 }
 
 /* Does "array" need to be allocated on the device?
