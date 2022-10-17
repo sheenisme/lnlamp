@@ -5429,58 +5429,6 @@ error:
     return sched;
 }
 
-/* If "node" is a band, then check if it has any consecutive
- * leaves that should be merged together and store the results
- * in "grouping".
- *
- * In particular, call group_subsequence on each consecutive
- * sequence of (filtered) leaves among the children of "node".
- */
-static isl_bool detect_band_node(__isl_keep isl_schedule_node *node, void *user)
-{
-    int i, n, first;
-    struct amp_prog *prog = user;
-
-    if (isl_schedule_node_get_type(node) != isl_schedule_node_band)
-        return isl_bool_true;
-
-    n = isl_schedule_node_n_children(node);
-    if (n < 0)
-        return isl_bool_error;
-
-    isl_schedule_node_dump(node);
-    printf("\n n 是： %d \n\n\n", n);
-
-    // first = -1;
-    // for (i = 0; i < n; ++i)
-    // {
-    //     isl_schedule_node *child;
-    //     enum isl_schedule_node_type type;
-
-    //     // child = isl_schedule_node_get_child(node, i);
-    //     // child = isl_schedule_node_child(child, 0);
-    //     // type = isl_schedule_node_get_type(child);
-    //     // isl_schedule_node_free(child);
-
-    //     // if (first >= 0 && type != isl_schedule_node_leaf)
-    //     // {
-    //     //     if (group_subsequence(node, first, i - first,
-    //     //                           grouping) < 0)
-    //     //         return isl_bool_error;
-    //     //     first = -1;
-    //     // }
-    //     // if (first < 0 && type == isl_schedule_node_leaf)
-    //     //     first = i;
-    // }
-    // if (first >= 0)
-    // {
-    //     if (group_subsequence(node, first, n - first, grouping) < 0)
-    //         return isl_bool_error;
-    // }
-
-    return isl_bool_true;
-}
-
 // Compute a new schedule based on the sched
 __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched)
 {
@@ -5506,7 +5454,6 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
         return sched;
     }
 
-    // isl_schedule_foreach_schedule_node_top_down(sched, &detect_band_node, &prog);
     schedule = amp_reschedule(ctx, prog, sched, rate);
     if (!schedule)
     {
