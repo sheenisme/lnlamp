@@ -4972,104 +4972,6 @@ error:
 }
 
 /**
- * @brief 检查
- *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
- * @note 注意, 这里的左右是新的调度树的左右分支的filter,是一个相对左右的概念。
- *             在mark标签和其他的语境中,high代表高精度,low代表低精度,higher代表更高精度,lower代表更低精度,后两者是一个相对（相互）的概念。
- */
-isl_size check_loop_index_presence_constraint(__isl_keep isl_constraint_list *constraint_list, isl_size start_dim)
-{
-#define DEBUG_CHECK
-    isl_size constraint_list_depth;
-    isl_constraint *con_1, *con_2, *con_2_2;
-    isl_aff *aff_1, *aff_2, *aff_2_2;
-    isl_set *set;
-    isl_aff *res_add;
-    isl_val *val_1, *val_2;
-    int empty;
-
-    con_1 = isl_constraint_list_get_constraint(constraint_list, start_dim);
-    // 如果总约束是偶数个，说明最外层循环的约束没有被压缩,则需要跳过一个
-    if (isl_constraint_list_n_constraint(constraint_list) % 2 == 0)
-    {
-#ifdef DEBUG_CHECK
-        printf("@DEBUG: \n       总约束是偶数个,从start_dim+1开始。 \n");
-        printf("\n");
-#endif // DEBUG_CHECK
-        start_dim++;
-    }
-    con_2 = isl_constraint_list_get_constraint(constraint_list, start_dim + 1);
-    con_2_2 = isl_constraint_list_get_constraint(constraint_list, start_dim + 2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       初始的第一层循环的约束是： \n");
-    isl_constraint_dump(con_1);
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_set, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_set, 1));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_param, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_in, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_cst, 0));
-
-    printf("\n        初始的第二层循环的约束是： \n");
-    isl_constraint_dump(con_2);
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_set, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_set, 1));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_param, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_in, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_cst, 0));
-    printf("\n        初始的第二层循环的约束是： \n");
-    isl_constraint_dump(con_2_2);
-    printf("\n");
-#endif // DEBUG_CHECK
-
-    // 获取第一个约束对（索引下标是i）左边约束的仿射表达式：[] -> { S[] -> [(-num + i)]},num 代表一个常数
-    aff_1 = isl_constraint_get_aff(con_1);
-    // 获取第二个约束对（索引下标是j）左边约束的仿射表达式: [] -> { S[] -> [(num - i + j)]},num 代表一个常数
-    aff_2 = isl_constraint_get_aff(con_2);
-    // 获取第二个约束对（索引下标是j）右边约束的仿射表达式: [] -> { S[] -> [(num - j)]},num 代表一个常数
-    aff_2_2 = isl_constraint_get_aff(con_2_2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       初始的第一层循环的左约束的仿射表达式是： \n");
-    isl_aff_dump(aff_1);
-    printf("\n        初始的第二层循环的左约束的仿射表达式是： \n");
-    isl_aff_dump(aff_2);
-    printf("\n        初始的第二层循环的右约束的仿射表达式是： \n");
-    isl_aff_dump(aff_2_2);
-    printf("\n");
-#endif // DEBUG_CHECK
-
-    res_add = isl_aff_add(isl_aff_copy(aff_1), isl_aff_copy(aff_2));
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束加一下的结果是： \n");
-    isl_aff_dump(res_add);
-    printf("add 1 res is nan : %d \n", isl_aff_is_nan(res_add));
-    printf("\n");
-#endif // DEBUG_CHECK
-    res_add = isl_aff_add(res_add, isl_aff_copy(aff_2_2));
-
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束再加一下的结果是： \n");
-    isl_aff_dump(res_add);
-    printf("add 2 res is nan : %d \n", isl_aff_is_nan(res_add));
-    printf("\n");
-#endif // DEBUG_CHECK
-    // 获取两个约束的公共空间的集合
-    set = isl_aff_eq_set(res_add, aff_2_2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束的公共空间的集合是： \n");
-    isl_set_dump(set);
-    printf("\n");
-#endif // DEBUG_CHECK
-
-    // 判断集合是否为空
-    empty = isl_set_is_empty(set);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个循环的公共空间的集合元素有：%d \n\n", empty);
-#endif // DEBUG_CHECK
-    if (empty <= 0)
-        return isl_bool_false;
-    return isl_bool_true;
-}
-/**
  * @brief 这里默认basic_set是{S_0[c0,c1,c2] -> c0 >= x and c0 <= y and c1 >= x and c1 <= y and c2 >= x and c2 <= y}的形式.
  *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
  * @note 注意, 这里的左右是新的调度树的左右分支的filter,是一个相对左右的概念。
@@ -5077,7 +4979,7 @@ isl_size check_loop_index_presence_constraint(__isl_keep isl_constraint_list *co
  */
 __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
 {
-    // #define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+#define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
     isl_constraint_list *constraint_list;
     isl_size constraint_list_deepth;
     isl_constraint *con_front, *con_back;
@@ -5107,18 +5009,12 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
 
     // 初始化constraint_list_dim
     isl_size constraint_list_dim = 0;
-    // 判断是否存在次外层的索引与最外层的索引是否有依赖关系，如果是，则跳过最外层
-    if (check_loop_index_presence_constraint(constraint_list, constraint_list_dim) == 1)
+    // 如果是奇数，从1开始划分。
+    if (constraint_list_deepth % 2 == 1)
     {
-        // 如果总约束是奇数，说明最外层的约束已经被压缩，变成了一个（索引为0），所以第二层的索引从1开始
-        if (constraint_list_deepth % 2 == 1)
-        {
-            constraint_list_dim = 1;
-        }
-        else
-        {
-            constraint_list_dim = 2;
-        }
+        constraint_list_dim = 1;
+        // printf("\n\033[31m@ERROR:\n       There constraint_list_deepth is odd , which is illegal !!! \033[0m\n\n");
+        // goto error;
     }
 
     // 依次获取,修改约束列表
@@ -5287,7 +5183,7 @@ struct amp_union_set_list
  */
 __isl_give struct amp_union_set_list *amp_get_filters(__isl_keep isl_ctx *ctx, __isl_take isl_union_set *domain, int rate)
 {
-    // #define DEBUG_AMP_GET_FILTERS
+#define DEBUG_AMP_GET_FILTERS
 
     // 定义要拆分的循环的dim为1（目前拆第一层循环）
     int separate_dim = 1;
@@ -5419,6 +5315,242 @@ error:
     return NULL;
 }
 
+/* Can "node" be tiled and then mapped to block and thread identifiers?
+ * That is, is it permutable with at least one coincident dimension?
+ */
+static isl_bool is_permutable(__isl_keep isl_schedule_node *node)
+{
+    if (!node)
+        return isl_bool_error;
+
+    if (isl_schedule_node_get_type(node) != isl_schedule_node_band)
+        return isl_bool_false;
+    if (!isl_schedule_node_band_get_permutable(node))
+        return isl_bool_false;
+    if (isl_schedule_node_band_n_member(node) < 1)
+        return isl_bool_false;
+    if (!isl_schedule_node_band_member_get_coincident(node, 0))
+        return isl_bool_false;
+
+    return isl_bool_true;
+}
+
+/* Is "node" not a suitably permutable band?
+ */
+static isl_bool not_permutable(__isl_keep isl_schedule_node *node, void *user)
+{
+    return isl_bool_not(is_permutable(node));
+}
+
+/* Does the subtree rooted at "node" have any suitably permutable band nodes?
+ * That is, does it have any nodes that are permutable and that
+ * have a least one coincident dimension?
+ */
+static isl_bool subtree_has_permutable_bands(__isl_keep isl_schedule_node *node)
+{
+    isl_bool all_non_permutable;
+
+    all_non_permutable = isl_schedule_node_every_descendant(node,
+                                                            &not_permutable, NULL);
+    return isl_bool_not(all_non_permutable);
+}
+
+/* Does "schedule" contain any permutable band with at least one coincident
+ * member?
+ */
+static isl_bool has_any_permutable_node(__isl_keep isl_schedule *schedule)
+{
+    isl_schedule_node *root;
+    isl_bool any_permutable;
+
+    root = isl_schedule_get_root(schedule);
+    any_permutable = subtree_has_permutable_bands(root);
+    isl_schedule_node_free(root);
+
+    return any_permutable;
+}
+
+/* Is "node" a candidate for mapping to block and thread identifiers?
+ * In particular, is it permutable with at least one coincident dimension?
+ * Alternatively, does the subtree rooted at "node" not contain
+ * any such permutable node?  Filter nodes are skipped in this case,
+ * because a band node will be inserted in front of the returned
+ * node and this is not possible for filter nodes that are children
+ * of set or sequence nodes.
+ */
+static int is_candidate(__isl_keep isl_schedule_node *node)
+{
+    isl_bool permutable;
+
+    if (isl_schedule_node_get_type(node) == isl_schedule_node_leaf)
+        return 1;
+    permutable = is_permutable(node);
+    if (permutable < 0 || permutable)
+        return permutable;
+    if (isl_schedule_node_get_type(node) == isl_schedule_node_filter)
+        return 0;
+    permutable = subtree_has_permutable_bands(node);
+    if (permutable < 0)
+        return -1;
+    return !permutable;
+}
+
+/* Is "node" the outermost node in its branch that can be tiled
+ * and then mapped to block and thread identifiers?
+ * If there are no such nodes in the subtree at "node" and
+ * if "node" is not a filter node, then it is accepted too.
+ */
+static int is_outer_tilable(__isl_keep isl_schedule_node *node)
+{
+    int tilable;
+    isl_schedule_node *ancestor;
+
+    tilable = is_candidate(node);
+    if (tilable < 0)
+        return -1;
+    if (!tilable)
+        return 0;
+
+    tilable = 0;
+    ancestor = isl_schedule_node_copy(node);
+    while (isl_schedule_node_has_parent(ancestor))
+    {
+        ancestor = isl_schedule_node_parent(ancestor);
+
+        tilable = is_candidate(ancestor);
+        if (tilable < 0 || tilable)
+            break;
+    }
+
+    isl_schedule_node_free(ancestor);
+    return tilable < 0 ? -1 : !tilable;
+}
+
+/* Extract user specified "tile" sizes from the "sizes" command line option,
+ * defaulting to option->tile_size in each dimension.
+ * *tile_len contains the maximum number of tile sizes needed.
+ * Update *tile_len to the number of specified tile sizes, if any, and
+ * return a pointer to the tile sizes (or NULL on error).
+ * Add the effectively used sizes to gen->used_sizes.
+ */
+static int *read_tile_sizes(struct amp_prog *prog, int *tile_len)
+{
+    int n;
+    int *tile_size;
+    isl_set *size;
+
+    tile_size = isl_alloc_array(prog->ctx, int, *tile_len);
+    if (!tile_size)
+        return NULL;
+    for (n = 0; n < *tile_len; ++n)
+        tile_size[n] = 2;
+
+    return tile_size;
+error:
+    free(tile_size);
+    return NULL;
+}
+
+/* Construct an isl_multi_val for use as tile sizes for tiling "node"
+ * from the elements in "tile_size".
+ */
+static __isl_give isl_multi_val *construct_band_tiles_sizes(
+    __isl_keep isl_schedule_node *node, int *tile_size)
+{
+    isl_space *space;
+
+    if (!node)
+        return NULL;
+
+    space = isl_schedule_node_band_get_space(node);
+    return ppcg_multi_val_from_int_list(space, tile_size);
+}
+
+/* Scale a band node that may have been split by split_band.
+ * "sizes" are the scaling factors for the original node.
+ * "node" either points to the original band node, or the outer
+ * of the two pieces after splitting.
+ *
+ * If the number of elements in "node" is smaller than the number of
+ * elements in "sizes", then some splitting has occurred and we split
+ * "sizes" in the same way.
+ */
+static __isl_give isl_schedule_node *scale_band(
+    __isl_take isl_schedule_node *node, __isl_take isl_multi_val *sizes)
+{
+    int n, dim;
+
+    n = isl_multi_val_dim(sizes, isl_dim_set);
+    dim = isl_schedule_node_band_n_member(node);
+    if (n > dim)
+    {
+        isl_multi_val *sizes2;
+
+        sizes2 = isl_multi_val_copy(sizes);
+        sizes = isl_multi_val_drop_dims(sizes,
+                                        isl_dim_set, dim, n - dim);
+        sizes2 = isl_multi_val_drop_dims(sizes2, isl_dim_set, 0, dim);
+        node = isl_schedule_node_child(node, 0);
+        node = isl_schedule_node_band_scale(node, sizes2);
+        node = isl_schedule_node_parent(node);
+    }
+
+    return isl_schedule_node_band_scale(node, sizes);
+}
+
+/* If "node" is the outermost permutable band that can be mapped to block and
+ * thread identifiers in its branch (or the root of a subtree with
+ * no such outer bands),
+ * then mark the band as such, attaching a ppcg_kernel to the mark.
+ *
+ * If hybrid tiling is allowed, then first try and apply it
+ * to "node" and its parent.
+ *
+ * If "node" is the root of a subtree without permutable bands,
+ * then insert a zero-dimensional permutable band such that
+ * we can assume that "node" always points to a band node.
+ * This includes the case where "node" already points to a band node,
+ * but one without any coincident dimension.  In this case,
+ * the extra node ensures that this original node does not get tiled.
+ *
+ * Tile "node" using user specified tile sizes, after splitting the band
+ * if the number of specified tile sizes is smaller than the dimension
+ * of the band.  Mark the point band of this tiling as the band that
+ * needs to be mapped to threads and instruct the AST generator to unroll
+ * the band if the "unroll_gpu_tile" option is set.
+ * Create a kernel representing the domain instances that reach "node" and
+ * insert a mark node pointing to the ppcg_kernel before the band node.
+ */
+static __isl_give isl_schedule_node *mark_outer_permutable(
+    __isl_take isl_schedule_node *node, void *user)
+{
+    struct amp_prog *prog = user;
+    int outer;
+    int tile_len;
+    int *tile_size;
+    isl_multi_val *sizes;
+
+    outer = is_outer_tilable(node);
+    if (outer < 0)
+        return isl_schedule_node_free(node);
+    if (!outer)
+        return node;
+
+    tile_len = isl_schedule_node_band_n_member(node);
+    tile_size = read_tile_sizes(prog, &tile_len);
+    if (!tile_size)
+        return isl_schedule_node_free(node);
+
+    sizes = construct_band_tiles_sizes(node, tile_size);
+
+    node = scale_band(node, isl_multi_val_copy(sizes));
+
+    isl_multi_val_free(sizes);
+    free(tile_size);
+
+    return node;
+}
+
 /**
  * @brief AMP重新调度，首先是拆分isl_union_set变成上下两个部分合在一起的isl_union_set_list;然后插入不同的mark标签结点;再然后根据插入的mark结点，生成对应的kernel,并删去多余的mark结点.
  *           最后在将修改好的调度树，转换成调度(isl_schedule)返回,如果在这里遇到问题，则返回最原始的调度。
@@ -5438,6 +5570,8 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
     node = isl_schedule_get_root(sched);
     // 获取domain(isl_union_set)
     domain = isl_schedule_get_domain(sched);
+
+    node = isl_schedule_node_map_descendant_bottom_up(node, &mark_outer_permutable, prog);
 
     for (int d = 0; d < division_number; d++)
     {
