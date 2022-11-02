@@ -5068,12 +5068,43 @@ error:
 }
 
 /**
+ * @brief   通过struct check_date中的数据，依据划分策略，获得划分的维度.
+ * @note    目前的迭代空间划分的维度选择的策略是：循环索引不被内层循环索引所依赖的最外层循环对应的维度.
+ */
+isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date *data)
+{
+    for (isl_size i = 0; i < data->dims; i++)
+    {
+        isl_bool upper_flag = isl_bool_true;
+        isl_bool lower_flag = isl_bool_true;
+        for (isl_size j = i + 1; j < data->dims; j++)
+        {
+            // 先判断其后面循环的上界是否依赖于当前的第i维度
+            if (data->constraint_array[i][j] == 1)
+            {
+                upper_flag = isl_bool_false;
+            }
+            // 再判断其后面循环的下界是否依赖于当前的第i维度
+            if (data->constraint_array[j][i] == 1)
+            {
+                lower_flag = isl_bool_false;
+            }
+        }
+        if (upper_flag && lower_flag)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+/**
  * @brief 这里默认basic_set是{S_0[c0,c1,c2] -> c0 >= x and c0 <= y and c1 >= x and c1 <= y and c2 >= x and c2 <= y}的形式.
  *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
  * @note 注意, 这里的左右是新的调度树的左右分支的filter,是一个相对左右的概念。
  *             在mark标签和其他的语境中,high代表高精度,low代表低精度,higher代表更高精度,lower代表更低精度,后两者是一个相对（相互）的概念。
  */
-__isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
+__isl_give struct amp_basic_set *
+amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
 {
     // #define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
     isl_constraint_list *constraint_list;
@@ -5082,6 +5113,7 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
     isl_aff *aff_x, *aff_y;
     struct amp_basic_set *amp_bset = amp_basic_set_init(ctx);
 
+    // 检查basic_set不能为空
     if (!basic_set)
     {
         goto error;
@@ -5105,7 +5137,9 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
     isl_size bset_dims = isl_basic_set_dim(basic_set, isl_dim_set);
     // 声明一个 basic_set_dims * basic_set_dims的二维数组，用于存储循环索引间的依赖关系
     isl_size **loop_index_constraint_relation_array = isl_alloc_array(ctx, isl_size *, bset_dims);
-    /*  初始化数组的对角线为0，表示自身对自己不存在关系.
+    /**
+     * @brief   初始化数组为0
+     * @note    对角线必须是0，表示自己对自己不存在依赖关系.
      */
     for (isl_size i = 0; i < bset_dims; i++)
     {
@@ -5121,6 +5155,10 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
     check_date->constraint_array = loop_index_constraint_relation_array;
     check_date->dims = bset_dims;
 
+    /**
+     * @brief   遍历每一个维度的上界和下界的约束，检查当前维度的索引是否对前面的循环索引存在依赖关系.
+     * @note    如果检查异常结束（也即除去该维度后的isl_basic_set为空）则提示一个ERROR.
+     */
     for (isl_size i = 1; i < bset_dims; i++)
     {
         check_date->current_dim = i;
@@ -5130,7 +5168,7 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
         }
     }
 
-#ifndef DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+#ifndef NO_PRINT
     // 打印出来数组。
     printf("@DEBUG: \n       the loop index constraint array is:\n");
     for (int i = 0; i < bset_dims; i++)
@@ -5155,8 +5193,12 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
         printf("\n");
     }
     printf("\n");
-#endif // DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+#endif // NO_PRINT
 
+    isl_size split_dim = get_split_dim_by_loop_index_constraint_relation_array(check_date);
+#ifndef NO_PRINT
+    printf("@DEBUG: \n       the split should be %d dim .\n\n", split_dim);
+#endif // NO_PRINT
     // if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, 1, &split_on_bound_pair, amp_bset) < 0)
     //     printf(" pos %d error of bound pair \n", 1);
     // else
