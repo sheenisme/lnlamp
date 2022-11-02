@@ -4971,104 +4971,102 @@ error:
     return NULL;
 }
 
-/**
- * @brief 检查
- *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
- * @note 注意, 这里的左右是新的调度树的左右分支的filter,是一个相对左右的概念。
- *             在mark标签和其他的语境中,high代表高精度,low代表低精度,higher代表更高精度,lower代表更低精度,后两者是一个相对（相互）的概念。
+/*
+ * check_loop_index_constraint_on_bound_pair function's  data
  */
-isl_size check_loop_index_presence_constraint(__isl_keep isl_constraint_list *constraint_list, isl_size start_dim)
+struct check_date
 {
-#define DEBUG_CHECK
-    isl_size constraint_list_depth;
-    isl_constraint *con_1, *con_2, *con_2_2;
-    isl_aff *aff_1, *aff_2, *aff_2_2;
-    isl_set *set;
-    isl_aff *res_add;
-    isl_val *val_1, *val_2;
-    int empty;
+    isl_size **constraint_array;
+    isl_size dims;
 
-    con_1 = isl_constraint_list_get_constraint(constraint_list, start_dim);
-    // 如果总约束是偶数个，说明最外层循环的约束没有被压缩,则需要跳过一个
-    if (isl_constraint_list_n_constraint(constraint_list) % 2 == 0)
+    isl_size current_dim;
+};
+
+/**
+ * 检查循环索引之间的依赖关系
+ */
+static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constraint *lower,
+                                                          __isl_take isl_constraint *upper,
+                                                          __isl_take isl_basic_set *bset,
+                                                          void *user)
+{
+    // #define DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+    struct check_date *data = (struct check_date *)user;
+    isl_size nvar;
+
+    nvar = isl_basic_set_dim(bset, isl_dim_set);
+#ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       current_dim is : %d\n", data->current_dim);
+    printf("       lower constraint and upper constraint is :\n");
+    isl_constraint_dump(lower);
+    isl_constraint_dump(upper);
+    printf("\n");
+    printf("@DEBUG: \n       isl_basic_set(Remove the current dimension) is :\n");
+    isl_basic_set_dump(bset);
+    printf("       n var of isl_basic_set is : %d \n\n", nvar);
+#endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+    if (nvar < 0)
+        goto error;
+
+    for (isl_size i = 0; i < data->current_dim; i++)
     {
-#ifdef DEBUG_CHECK
-        printf("@DEBUG: \n       总约束是偶数个,从start_dim+1开始。 \n");
-        printf("\n");
-#endif // DEBUG_CHECK
-        start_dim++;
+        if (isl_constraint_involves_dims(lower, isl_dim_set, i, 1) == 1)
+        {
+#ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+            printf("@DEBUG: \n       The lower bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
+#endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+            data->constraint_array[data->current_dim][i] = 1;
+        }
+
+        if (isl_constraint_involves_dims(upper, isl_dim_set, i, 1) == 1)
+        {
+#ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+            printf("@DEBUG: \n       The upper bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
+#endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+            data->constraint_array[i][data->current_dim] = 1;
+        }
     }
-    con_2 = isl_constraint_list_get_constraint(constraint_list, start_dim + 1);
-    con_2_2 = isl_constraint_list_get_constraint(constraint_list, start_dim + 2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       初始的第一层循环的约束是： \n");
-    isl_constraint_dump(con_1);
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_set, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_set, 1));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_param, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_in, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_1, isl_dim_cst, 0));
 
-    printf("\n        初始的第二层循环的约束是： \n");
-    isl_constraint_dump(con_2);
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_set, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_set, 1));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_param, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_in, 0));
-    isl_aff_dump(isl_constraint_get_bound(con_2, isl_dim_cst, 0));
-    printf("\n        初始的第二层循环的约束是： \n");
-    isl_constraint_dump(con_2_2);
+#ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
+    // 打印出来数组。
+    printf("@DEBUG: \n       the loop index constraint array is:\n");
+    for (int i = 0; i < data->dims; i++)
+    {
+        // 打印表头
+        if (i == 0)
+        {
+            printf("dim\\dim\t");
+            for (int j = 0; j < data->dims; j++)
+            {
+                printf("%d \t", j);
+            }
+            printf("\n");
+        }
+        // 打印列号
+        printf("%d \t", i);
+        // 打印内容
+        for (int j = 0; j < data->dims; j++)
+        {
+            printf("%d \t", data->constraint_array[i][j]);
+        }
+        printf("\n");
+    }
     printf("\n");
-#endif // DEBUG_CHECK
+#endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
 
-    // 获取第一个约束对（索引下标是i）左边约束的仿射表达式：[] -> { S[] -> [(-num + i)]},num 代表一个常数
-    aff_1 = isl_constraint_get_aff(con_1);
-    // 获取第二个约束对（索引下标是j）左边约束的仿射表达式: [] -> { S[] -> [(num - i + j)]},num 代表一个常数
-    aff_2 = isl_constraint_get_aff(con_2);
-    // 获取第二个约束对（索引下标是j）右边约束的仿射表达式: [] -> { S[] -> [(num - j)]},num 代表一个常数
-    aff_2_2 = isl_constraint_get_aff(con_2_2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       初始的第一层循环的左约束的仿射表达式是： \n");
-    isl_aff_dump(aff_1);
-    printf("\n        初始的第二层循环的左约束的仿射表达式是： \n");
-    isl_aff_dump(aff_2);
-    printf("\n        初始的第二层循环的右约束的仿射表达式是： \n");
-    isl_aff_dump(aff_2_2);
-    printf("\n");
-#endif // DEBUG_CHECK
+    isl_constraint_free(upper);
+    isl_constraint_free(lower);
+    isl_basic_set_free(bset);
 
-    res_add = isl_aff_add(isl_aff_copy(aff_1), isl_aff_copy(aff_2));
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束加一下的结果是： \n");
-    isl_aff_dump(res_add);
-    printf("add 1 res is nan : %d \n", isl_aff_is_nan(res_add));
-    printf("\n");
-#endif // DEBUG_CHECK
-    res_add = isl_aff_add(res_add, isl_aff_copy(aff_2_2));
+    return isl_stat_ok;
+error:
+    isl_constraint_free(upper);
+    isl_constraint_free(lower);
+    isl_basic_set_free(bset);
 
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束再加一下的结果是： \n");
-    isl_aff_dump(res_add);
-    printf("add 2 res is nan : %d \n", isl_aff_is_nan(res_add));
-    printf("\n");
-#endif // DEBUG_CHECK
-    // 获取两个约束的公共空间的集合
-    set = isl_aff_eq_set(res_add, aff_2_2);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个约束的公共空间的集合是： \n");
-    isl_set_dump(set);
-    printf("\n");
-#endif // DEBUG_CHECK
-
-    // 判断集合是否为空
-    empty = isl_set_is_empty(set);
-#ifdef DEBUG_CHECK
-    printf("@DEBUG: \n       两个循环的公共空间的集合元素有：%d \n\n", empty);
-#endif // DEBUG_CHECK
-    if (empty <= 0)
-        return isl_bool_false;
-    return isl_bool_true;
+    return isl_stat_error;
 }
+
 /**
  * @brief 这里默认basic_set是{S_0[c0,c1,c2] -> c0 >= x and c0 <= y and c1 >= x and c1 <= y and c2 >= x and c2 <= y}的形式.
  *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
@@ -5095,34 +5093,79 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
 
     // 获取该语句的约束列表,isl_basic_set -> isl_constraint_list
     constraint_list = isl_basic_set_get_constraint_list(basic_set);
-
+    // 获取isl_constraint_list种约束的数量
+    constraint_list_deepth = isl_constraint_list_n_constraint(constraint_list);
 #ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
     printf("@DEBUG: \n       the isl_constraint_list of single_statement is : \n");
     isl_constraint_list_dump(constraint_list);
     printf("\n\n");
 #endif // !NO_SHOW_CONSTRAINT_LIST
 
-    // 获取isl_constraint_list的数量（维度）
-    constraint_list_deepth = isl_constraint_list_n_constraint(constraint_list);
-
-    // 初始化constraint_list_dim
-    isl_size constraint_list_dim = 0;
-    // 判断是否存在次外层的索引与最外层的索引是否有依赖关系，如果是，则跳过最外层
-    if (check_loop_index_presence_constraint(constraint_list, constraint_list_dim) == 1)
+    // 获取basic_set的维度数,也即当前语句是在S_0[c0,c1,c2]是在几层循环里
+    isl_size bset_dims = isl_basic_set_dim(basic_set, isl_dim_set);
+    // 声明一个 basic_set_dims * basic_set_dims的二维数组，用于存储循环索引间的依赖关系
+    isl_size **loop_index_constraint_relation_array = isl_alloc_array(ctx, isl_size *, bset_dims);
+    /*  初始化数组的对角线为0，表示自身对自己不存在关系.
+     */
+    for (isl_size i = 0; i < bset_dims; i++)
     {
-        // 如果总约束是奇数，说明最外层的约束已经被压缩，变成了一个（索引为0），所以第二层的索引从1开始
-        if (constraint_list_deepth % 2 == 1)
+        loop_index_constraint_relation_array[i] = isl_alloc_array(ctx, isl_size, bset_dims);
+        for (isl_size j = 0; j < bset_dims; j++)
         {
-            constraint_list_dim = 1;
-        }
-        else
-        {
-            constraint_list_dim = 2;
+            loop_index_constraint_relation_array[i][j] = 0;
         }
     }
 
+    // 申请check_date
+    struct check_date *check_date = isl_alloc_array(ctx, struct check_date, 1);
+    check_date->constraint_array = loop_index_constraint_relation_array;
+    check_date->dims = bset_dims;
+
+    for (isl_size i = 1; i < bset_dims; i++)
+    {
+        check_date->current_dim = i;
+        if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, i, &check_loop_index_constraint_on_bound_pair, check_date) < 0)
+        {
+            printf("\n\033[31m@ERROR:\n       check_loop_index_constraint_on_bound_pair meets some ERRORS!!!  \033[0m\n\n");
+        }
+    }
+
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+    // 打印出来数组。
+    printf("@DEBUG: \n       the loop index constraint array is:\n");
+    for (int i = 0; i < bset_dims; i++)
+    {
+        // 打印表头
+        if (i == 0)
+        {
+            printf("dim\\dim\t");
+            for (int j = 0; j < bset_dims; j++)
+            {
+                printf("%d \t", j);
+            }
+            printf("\n");
+        }
+        // 打印列号
+        printf("%d \t", i);
+        // 打印内容
+        for (int j = 0; j < bset_dims; j++)
+        {
+            printf("%d \t", loop_index_constraint_relation_array[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+
+    // if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, 1, &split_on_bound_pair, amp_bset) < 0)
+    //     printf(" pos %d error of bound pair \n", 1);
+    // else
+    // {
+    //     printf("对最外层循环有依赖!constraint_list_dim++\n");
+    //     constraint_list_dim++;
+    // }
     // 依次获取,修改约束列表
-    for (; constraint_list_dim < constraint_list_deepth; constraint_list_dim += 2)
+    for (isl_size constraint_list_dim = 0; constraint_list_dim < constraint_list_deepth; constraint_list_dim += 2)
     {
         /**
          * @brief 如果是要修改的深度(deepth)的约束,则将't >= x'修改为't >= amp_partition_val + x + 1',后面将该约束存放在amp_basic_set的right中;
@@ -5134,6 +5177,13 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
             // isl_constraint_list -> isl_constraint
             con_front = isl_constraint_list_get_constraint(constraint_list, constraint_list_dim);
             con_back = isl_constraint_list_get_constraint(constraint_list, constraint_list_dim + 1);
+#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+            printf("@DEBUG: \n       初始的t的左约束是： \n");
+            isl_constraint_dump(con_front);
+            printf("\n       初始的t的右约束是： \n");
+            isl_constraint_dump(con_back);
+            printf("\n");
+#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
 
             // 获取t的约束的左边约束的仿射表达式：[] -> { S[] -> [(-x + t)]}
             aff_x = isl_constraint_get_aff(con_front);
@@ -5156,7 +5206,7 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
             if (!amp_partition_val)
                 goto error;
             assert(amp_partition_val);
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
             printf("@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
             isl_aff_dump(amp_partition_val);
             printf("\n");
@@ -5232,7 +5282,7 @@ __isl_give struct amp_basic_set *amp_get_single_statement_constraints(__isl_keep
             // 将左右的新的仿射表达式转换成约束
             isl_constraint *c_left = isl_inequality_from_aff(aff_left);
             isl_constraint *c_right = isl_inequality_from_aff(aff_right);
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
             printf("@DEBUG: \n       新的左分支的右约束是：  \n");
             isl_constraint_dump(c_left);
             printf("\n      新的右分支的左约束是：  \n");
