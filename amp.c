@@ -4861,6 +4861,10 @@ struct amp_basic_set
     // the right basic set and its flag
     isl_basic_set *right;
     isl_bool right_flag;
+
+    // split need data
+    isl_ctx *ctx;
+    int rate;
 };
 
 /**
@@ -4875,6 +4879,10 @@ __isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx)
     amp_bset->right = NULL;
     amp_bset->left_flag = isl_bool_error;
     amp_bset->right_flag = isl_bool_error;
+
+    amp_bset->ctx = ctx;
+    amp_bset->rate = 50;
+
     return amp_bset;
 
 error:
@@ -4990,7 +4998,7 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
                                                           __isl_take isl_basic_set *bset,
                                                           void *user)
 {
-    // #define DEBUG_SPLIT_ON_BOUND_PAIR_CHECK
+    // #define DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
     struct check_date *data = (struct check_date *)user;
     isl_size nvar;
 
@@ -5097,6 +5105,147 @@ isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date
     }
     return -1;
 }
+
+/*
+ * 划分指定的维度
+ */
+static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
+                                    __isl_take isl_constraint *upper, __isl_take isl_basic_set *bset,
+                                    void *user)
+{
+#define DEBUG_SPLIT_ON_BOUND_PAIR
+    struct amp_basic_set *amp_bset = (struct amp_basic_set *)user;
+    isl_aff *aff_x, *aff_y;
+
+    // 获取t的约束的左边约束的仿射表达式：[] -> { S[] -> [(-x + t)]}
+    aff_x = isl_constraint_get_aff(lower);
+    // 获取t的约束的右边约束的仿射表达式: [] -> { S[] -> [(y - t)]}
+    aff_y = isl_constraint_get_aff(upper);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       初始的t的左约束的仿射表达式是： \n");
+    isl_aff_dump(aff_x);
+    printf("\n       初始的t的右约束的仿射表达式是： \n");
+    isl_aff_dump(aff_y);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    /**
+     * @brief 获取amp_partition_val(根据rate划分出来高精度计算所需的长度值，也叫amp划分值)
+     *           即求floor( (y-x) * rate/100 ),数学上则是[ (y-x) * rate/100 ]
+     * @note 注意这里是向下取整
+     */
+    isl_aff *amp_partition_val = amp_get_partition_aff(amp_bset->ctx, isl_aff_copy(aff_x), isl_aff_copy(aff_y), amp_bset->rate);
+    if (!amp_partition_val)
+        goto error;
+    assert(amp_partition_val);
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
+    isl_aff_dump(amp_partition_val);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    /**
+     * @brief 先获取新的左右filter需要用到的仿射表达式.
+     *
+     * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
+     *       所以先求新y,然后就顺理成章得到了新x.
+     */
+    isl_aff *aff_left = isl_aff_copy(aff_x);
+    isl_aff *aff_right = isl_aff_copy(aff_x);
+
+    // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
+    aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
+    // 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
+    aff_right = isl_aff_sub(aff_right, isl_aff_copy(amp_partition_val));
+
+    /**
+     * @brief 左分支的右约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新y == x？ 新y == y？
+     *          如果新y == x，说明左分支不存在。
+     * @note 新y == x？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
+     */
+    isl_bool left_x_flag = isl_aff_plain_is_zero(isl_aff_add(aff_x, isl_aff_copy(aff_left)));
+    // isl_bool left_y_flag = isl_aff_plain_is_equal(aff_y, aff_left);
+    // printf("\n left_x_flag 是: %d \n", left_x_flag);
+    if (left_x_flag)
+        amp_bset->left_flag = isl_bool_false;
+    else
+        amp_bset->left_flag = isl_bool_true;
+
+    /**
+     * @brief 右分支的左约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新x == x？ 新x == y？
+     *          如果新x == y, 说明右分支不存在。
+     * @note  新x == y？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
+     */
+    // isl_bool right_x_flag = isl_aff_plain_is_equal(aff_x, aff_right);
+    isl_bool right_y_flag = isl_aff_plain_is_zero(isl_aff_add(aff_y, isl_aff_copy(aff_right)));
+    // printf("\n right_y_flag 是: %d \n", right_y_flag);
+    if (right_y_flag)
+        amp_bset->right_flag = isl_bool_false;
+    else
+        amp_bset->right_flag = isl_bool_true;
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       amp_bset 的标志是: \n");
+    printf("           amp_bset->left_flag  是: %d \n", amp_bset->left_flag);
+    printf("           amp_bset->right_flag 是: %d \n", amp_bset->right_flag);
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    /**
+     * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val -1 + t )]}
+     *            这里是先用 (-x + t) - amp_partition_val,然后再拿结果减 1 求得的
+     * @note  注意前面已经获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，这里只需要减1即可
+     */
+    // 初始化来获取与aff_right同空间的常数为1的放射表达式
+    isl_space *space = isl_aff_get_domain_space(aff_right);
+    isl_aff *one = isl_aff_val_on_domain_space(space, isl_val_int_from_si(amp_bset->ctx, 1));
+    // printf("\n\n  one 是： \n");
+    // isl_aff_dump(one);
+
+    // 减1 得到最终的仿射表达式
+    aff_right = isl_aff_sub(aff_right, one);
+    isl_aff_free(amp_partition_val);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       左分支的最终新仿射表达式是： \n");
+    isl_aff_dump(aff_left);
+    printf("\n       右分支的最终新仿射表达式是： \n");
+    isl_aff_dump(aff_right);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    // 将左右的新的仿射表达式转换成约束
+    isl_constraint *c_left = isl_inequality_from_aff(aff_left);
+    isl_constraint *c_right = isl_inequality_from_aff(aff_right);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       新的左分支的右约束是：  \n");
+    isl_constraint_dump(c_left);
+    printf("\n      新的右分支的左约束是：  \n");
+    isl_constraint_dump(c_right);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    // 将新约束添加到左右的filter中
+    amp_bset->left = isl_basic_set_add_constraint(amp_bset->left, c_left);
+    amp_bset->right = isl_basic_set_add_constraint(amp_bset->right, c_right);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       左filter是:  \n");
+    isl_basic_set_dump(amp_bset->left);
+    printf("\n      右filter是:  \n");
+    isl_basic_set_dump(amp_bset->right);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    isl_constraint_free(upper);
+    isl_constraint_free(lower);
+    isl_basic_set_free(bset);
+
+    return isl_stat_ok;
+error:
+    isl_constraint_free(upper);
+    isl_constraint_free(lower);
+    isl_basic_set_free(bset);
+
+    return isl_stat_error;
+}
+
 /**
  * @brief 这里默认basic_set是{S_0[c0,c1,c2] -> c0 >= x and c0 <= y and c1 >= x and c1 <= y and c2 >= x and c2 <= y}的形式.
  *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
@@ -5107,10 +5256,6 @@ __isl_give struct amp_basic_set *
 amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
 {
     // #define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-    isl_constraint_list *constraint_list;
-    isl_size constraint_list_deepth;
-    isl_constraint *con_front, *con_back;
-    isl_aff *aff_x, *aff_y;
     struct amp_basic_set *amp_bset = amp_basic_set_init(ctx);
 
     // 检查basic_set不能为空
@@ -5122,16 +5267,6 @@ amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_bas
     // 复制basic_set,初始化amp的左右分支的两个filter(basic_set)
     amp_bset->left = isl_basic_set_copy(basic_set);
     amp_bset->right = isl_basic_set_copy(basic_set);
-
-    // 获取该语句的约束列表,isl_basic_set -> isl_constraint_list
-    constraint_list = isl_basic_set_get_constraint_list(basic_set);
-    // 获取isl_constraint_list种约束的数量
-    constraint_list_deepth = isl_constraint_list_n_constraint(constraint_list);
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-    printf("@DEBUG: \n       the isl_constraint_list of single_statement is : \n");
-    isl_constraint_list_dump(constraint_list);
-    printf("\n\n");
-#endif // !NO_SHOW_CONSTRAINT_LIST
 
     // 获取basic_set的维度数,也即当前语句是在S_0[c0,c1,c2]是在几层循环里
     isl_size bset_dims = isl_basic_set_dim(basic_set, isl_dim_set);
@@ -5196,164 +5331,30 @@ amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_bas
 #endif // NO_PRINT
 
     isl_size split_dim = get_split_dim_by_loop_index_constraint_relation_array(check_date);
+    assert(split_dim != -1);
 #ifndef NO_PRINT
-    printf("@DEBUG: \n       the split should be %d dim .\n\n", split_dim);
+    printf("@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
 #endif // NO_PRINT
-    // if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, 1, &split_on_bound_pair, amp_bset) < 0)
-    //     printf(" pos %d error of bound pair \n", 1);
-    // else
-    // {
-    //     printf("对最外层循环有依赖!constraint_list_dim++\n");
-    //     constraint_list_dim++;
-    // }
-    // 依次获取,修改约束列表
-    for (isl_size constraint_list_dim = 0; constraint_list_dim < constraint_list_deepth; constraint_list_dim += 2)
-    {
-        /**
-         * @brief 如果是要修改的深度(deepth)的约束,则将't >= x'修改为't >= amp_partition_val + x + 1',后面将该约束存放在amp_basic_set的right中;
-         *                                         将't <= y'修改为't <= amp_partition_val + x',后面将该约束存放在amp_basic_set的left中.
-         * @note 假定原始的deepth维度（深度）的约束为 x <= t <= y, 下面将一步步介绍如何实现的
-         */
-        if (constraint_list_dim / 2 == deepth - 1)
-        {
-            // isl_constraint_list -> isl_constraint
-            con_front = isl_constraint_list_get_constraint(constraint_list, constraint_list_dim);
-            con_back = isl_constraint_list_get_constraint(constraint_list, constraint_list_dim + 1);
-#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       初始的t的左约束是： \n");
-            isl_constraint_dump(con_front);
-            printf("\n       初始的t的右约束是： \n");
-            isl_constraint_dump(con_back);
-            printf("\n");
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
 
-            // 获取t的约束的左边约束的仿射表达式：[] -> { S[] -> [(-x + t)]}
-            aff_x = isl_constraint_get_aff(con_front);
-            // 获取t的约束的右边约束的仿射表达式: [] -> { S[] -> [(y - t)]}
-            aff_y = isl_constraint_get_aff(con_back);
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       初始的t的左约束的仿射表达式是： \n");
-            isl_aff_dump(aff_x);
-            printf("\n       初始的t的右约束的仿射表达式是： \n");
-            isl_aff_dump(aff_y);
-            printf("\n");
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+    // 划分split_dim
+    amp_bset->ctx = ctx;
+    amp_bset->rate = rate;
+    if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, split_dim, &split_on_bound_pair, amp_bset) < 0)
+        printf("\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
 
-            /**
-             * @brief 获取amp_partition_val(根据rate划分出来高精度计算所需的长度值，也叫amp划分值)
-             *           即求floor( (y-x) * rate/100 ),数学上则是[ (y-x) * rate/100 ]
-             * @note 注意这里是向下取整
-             */
-            isl_aff *amp_partition_val = amp_get_partition_aff(ctx, isl_aff_copy(aff_x), isl_aff_copy(aff_y), rate);
-            if (!amp_partition_val)
-                goto error;
-            assert(amp_partition_val);
-#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
-            isl_aff_dump(amp_partition_val);
-            printf("\n");
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
+#ifndef NO_PRINT
+    printf("@DEBUG: \n       更新后,左filter是:  \n");
+    isl_basic_set_dump(amp_bset->left);
+    printf("\n      更新后,右filter是:  \n");
+    isl_basic_set_dump(amp_bset->right);
+    printf("\n");
+#endif // NO_PRINT
 
-            /**
-             * @brief 先获取新的左右filter需要用到的仿射表达式.
-             *
-             * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
-             *       所以先求新y,然后就顺理成章得到了新x.
-             */
-            isl_aff *aff_left = isl_aff_copy(aff_x);
-            isl_aff *aff_right = isl_aff_copy(aff_x);
-
-            // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
-            aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
-            // 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
-            aff_right = isl_aff_sub(aff_right, isl_aff_copy(amp_partition_val));
-
-            /**
-             * @brief 左分支的右约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新y == x？ 新y == y？
-             *          如果新y == x，说明左分支不存在。
-             * @note 新y == x？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
-             */
-            isl_bool left_x_flag = isl_aff_plain_is_zero(isl_aff_add(aff_x, isl_aff_copy(aff_left)));
-            // isl_bool left_y_flag = isl_aff_plain_is_equal(aff_y, aff_left);
-            // printf("\n left_x_flag 是: %d \n", left_x_flag);
-            if (left_x_flag)
-                amp_bset->left_flag = isl_bool_false;
-            else
-                amp_bset->left_flag = isl_bool_true;
-
-            /**
-             * @brief 右分支的左约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新x == x？ 新x == y？
-             *          如果新x == y, 说明右分支不存在。
-             * @note  新x == y？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
-             */
-            // isl_bool right_x_flag = isl_aff_plain_is_equal(aff_x, aff_right);
-            isl_bool right_y_flag = isl_aff_plain_is_zero(isl_aff_add(aff_y, isl_aff_copy(aff_right)));
-            // printf("\n right_y_flag 是: %d \n", right_y_flag);
-            if (right_y_flag)
-                amp_bset->right_flag = isl_bool_false;
-            else
-                amp_bset->right_flag = isl_bool_true;
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       amp_bset 的标志是: \n");
-            printf("           amp_bset->left_flag  是: %d \n", amp_bset->left_flag);
-            printf("           amp_bset->right_flag 是: %d \n", amp_bset->right_flag);
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-
-            /**
-             * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val -1 + t )]}
-             *            这里是先用 (-x + t) - amp_partition_val,然后再拿结果减 1 求得的
-             * @note  注意前面已经获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，这里只需要减1即可
-             */
-            // 初始化来获取与aff_right同空间的常数为1的放射表达式
-            isl_space *space = isl_aff_get_domain_space(aff_right);
-            isl_aff *one = isl_aff_val_on_domain_space(space, isl_val_int_from_si(ctx, 1));
-            // printf("\n\n  one 是： \n");
-            // isl_aff_dump(one);
-
-            // 减1 得到最终的仿射表达式
-            aff_right = isl_aff_sub(aff_right, one);
-            isl_aff_free(amp_partition_val);
-#ifdef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       左分支的最终新仿射表达式是： \n");
-            isl_aff_dump(aff_left);
-            printf("\n       右分支的最终新仿射表达式是： \n");
-            isl_aff_dump(aff_right);
-            printf("\n");
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-
-            // 将左右的新的仿射表达式转换成约束
-            isl_constraint *c_left = isl_inequality_from_aff(aff_left);
-            isl_constraint *c_right = isl_inequality_from_aff(aff_right);
-#ifndef DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-            printf("@DEBUG: \n       新的左分支的右约束是：  \n");
-            isl_constraint_dump(c_left);
-            printf("\n      新的右分支的左约束是：  \n");
-            isl_constraint_dump(c_right);
-            printf("\n");
-#endif // DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
-
-            // 将新约束添加到左右的filter中
-            amp_bset->left = isl_basic_set_add_constraint(amp_bset->left, c_left);
-            amp_bset->right = isl_basic_set_add_constraint(amp_bset->right, c_right);
-
-            isl_aff_free(aff_x);
-            isl_aff_free(aff_y);
-        }
-    }
-    // 释放掉constraint list
-    isl_constraint_list_free(constraint_list);
     isl_basic_set_free(basic_set);
-    isl_constraint_free(con_back);
-    isl_constraint_free(con_front);
 
     return amp_bset;
 error:
-    isl_constraint_list_free(constraint_list);
     isl_basic_set_free(basic_set);
-    isl_constraint_free(con_back);
-    isl_constraint_free(con_front);
-    isl_aff_free(aff_x);
-    isl_aff_free(aff_y);
     amp_basic_set_free(amp_bset);
 
     return NULL;
