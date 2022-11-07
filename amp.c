@@ -4845,8 +4845,8 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
 }
 
 /**
- * @brief 为了更好的划分amp划分后的filter设计的结构体.
- * left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
+ * @brief   为了更好的划分amp，为划分后的filter设计的结构体.
+ * @note    left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
  */
 struct amp_basic_set
 {
@@ -5119,7 +5119,7 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     /**
-     * @brief 先获取新的左右filter需要用到的仿射表达式.
+     * @brief 先获取新的左右分支需要用到的仿射表达式.
      *
      * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
      *       所以先求新y,然后就顺理成章得到了新x.
@@ -5177,7 +5177,7 @@ error:
  */
 static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int rate)
 {
-#define DEBUG_PARTITION_BY_RATE
+    // #define DEBUG_PARTITION_BY_RATE
     struct amp_basic_set *amp_bset = amp_basic_set_init(ctx);
 
     // 检查basic_set不能为空
@@ -5225,7 +5225,7 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
         }
     }
 
-#ifndef NO_PRINT
+#ifdef DEBUG_PARTITION_BY_RATE
     // 打印出来数组。
     printf("@DEBUG: \n       the loop index constraint array is:\n");
     for (int i = 0; i < bset_dims; i++)
@@ -5250,27 +5250,27 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
         printf("\n");
     }
     printf("\n");
-#endif // NO_PRINT
+#endif // DEBUG_PARTITION_BY_RATE
 
     // 获取应该划分的维度
     isl_size split_dim = get_split_dim_by_loop_index_constraint_relation_array(check_date);
     assert(split_dim != -1);
-#ifndef NO_PRINT
+#ifdef DEBUG_PARTITION_BY_RATE
     printf("@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
-#endif // NO_PRINT
+#endif // DEBUG_PARTITION_BY_RATE
 
     // 划分split_dim对应的维度
     amp_bset->rate = rate;
     if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, split_dim, &split_on_bound_pair, amp_bset) < 0)
         printf("\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
 
-#ifndef NO_PRINT
+#ifdef DEBUG_PARTITION_BY_RATE
     printf("@DEBUG: \n       对当前isl_basic_set进行迭代空间划分后,左迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->left);
     printf("\n      对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->right);
     printf("\n");
-#endif // NO_PRINT
+#endif // DEBUG_PARTITION_BY_RATE
 
     isl_basic_set_free(basic_set);
 
@@ -5297,9 +5297,11 @@ struct amp_domain
     isl_union_set *right;
 };
 
-/* This function is called for each set in a union_set.
+/**
+ * This function is called for each set in a union_set.
  * If the dimension of the set is 0, we store the set in the both left and right.
- * else the dimension of the set > 0, we store
+ * else the dimension of the set > 0, we split the set, and then store it(which is splited) in left and right.
+ * @note if the dimension of the set < 0, that means errors.
  */
 static isl_stat repartition_set(__isl_take isl_set *set, void *user)
 {
