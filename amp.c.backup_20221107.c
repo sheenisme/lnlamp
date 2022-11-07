@@ -4847,18 +4847,25 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
 /**
  * @brief 为了更好的划分amp划分后的filter设计的结构体.
  * left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
+ * flag代表对应的filter是否存在,true即为存在.
+ * @note
+ *      当rate = 0,或者取整后的partition_val = x时，left_flag应该为false
+ *      当rate = 0,或者取整后的partition_val = y时，right_flag应该为false
  */
 struct amp_basic_set
 {
     // the left basic set and its flag
     isl_basic_set *left;
+    isl_bool left_flag;
 
     // the right basic set and its flag
     isl_basic_set *right;
+    isl_bool right_flag;
 
     // split need data
     isl_ctx *ctx;
     int rate;
+    isl_size dept_dim;
 };
 
 /**
@@ -4871,9 +4878,12 @@ __isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx)
     struct amp_basic_set *amp_bset = isl_calloc_type(ctx, struct amp_basic_set);
     amp_bset->left = NULL;
     amp_bset->right = NULL;
+    amp_bset->left_flag = isl_bool_error;
+    amp_bset->right_flag = isl_bool_error;
 
     amp_bset->ctx = ctx;
     amp_bset->rate = 50;
+    amp_bset->dept_dim = -1;
 
     return amp_bset;
 
@@ -4889,7 +4899,35 @@ void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset)
     {
         isl_basic_set_free(amp_bset->left);
         isl_basic_set_free(amp_bset->right);
+        amp_bset->left_flag = isl_bool_error;
+        amp_bset->right_flag = isl_bool_error;
         free(amp_bset);
+    }
+}
+
+// 这个函数暂时用不到了
+isl_bool amp_basic_set_reset(__isl_take struct amp_basic_set *amp_bset)
+{
+    if (amp_bset)
+    {
+        if (amp_bset->left)
+        {
+            isl_basic_set_free(amp_bset->left);
+            amp_bset->left = NULL;
+        }
+        if (amp_bset->right)
+        {
+            isl_basic_set_free(amp_bset->right);
+            amp_bset->right = NULL;
+        }
+        amp_bset->left_flag = isl_bool_error;
+        amp_bset->right_flag = isl_bool_error;
+        return isl_bool_true;
+    }
+    else
+    {
+        printf("\n\033[31m@ERROR:\n       amp_basic_set is NULL !!! \033[0m\n\n");
+        return isl_bool_false;
     }
 }
 
@@ -4898,7 +4936,7 @@ void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset)
  */
 __isl_give isl_aff *amp_get_partition_aff(__isl_keep isl_ctx *ctx, __isl_take isl_aff *x, __isl_take isl_aff *y, int rate)
 {
-    // #define DEBUG_AMP_GET_PARTITION_AFF
+#define DEBUG_AMP_GET_PARTITION_AFF
 
     // x,y,rate 是否有异常值
     if (!x || !y || rate < 0 || rate > 100)
@@ -5070,9 +5108,8 @@ isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date
     return -1;
 }
 
-/**
- * @brief   通过该维度的上下界的约束（lower和upper）进行迭代空间的划分
- * @note    划分的方法是：
+/*
+ * 划分指定的维度
  */
 static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
                                     __isl_take isl_constraint *upper, __isl_take isl_basic_set *bset,
@@ -5082,23 +5119,39 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     struct amp_basic_set *amp_bset = (struct amp_basic_set *)user;
     isl_aff *aff_x, *aff_y;
 
-#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
     printf("@DEBUG: \n       split_on_bound_pair 接收到的一些参数有： \n");
     isl_basic_set_dump(bset);
+    printf("\n");
+    // isl_size dims = isl_basic_set_dim(bset, isl_dim_set);
+    // for (isl_size i = 0; i < dims; i++)
+    // {
+    //     printf("@DEBUG: \n       the dim name is %s, the min val and max val is: \n", isl_basic_set_get_dim_name(isl_basic_set_copy(bset), isl_dim_set, i));
+    //     isl_val_dump(isl_set_dim_min_val(isl_set_from_basic_set(isl_basic_set_copy(bset)), i));
+    //     isl_val_dump(isl_set_dim_max_val(isl_set_from_basic_set(isl_basic_set_copy(bset)), i));
+    // }
+    isl_val_dump(isl_set_dim_min_val(isl_set_from_basic_set(isl_basic_set_copy(bset)), amp_bset->dept_dim));
+    isl_val_dump(isl_set_dim_max_val(isl_set_from_basic_set(isl_basic_set_copy(bset)), amp_bset->dept_dim));
     printf("\n");
     isl_constraint_dump(upper);
     isl_constraint_dump(lower);
     printf("\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
+    // aff_x = isl_constraint_get_div(lower, 0);
+    // aff_y = isl_constraint_get_div(upper, 1);
+    // isl_aff_dump(aff_x);
+    // isl_aff_dump(aff_y);
+    isl_constraint_dump(isl_constraint_negate(isl_constraint_copy(upper)));
+    isl_constraint_dump(isl_constraint_negate(isl_constraint_copy(lower)));
 
-    // 获取当前维度的左边约束(循环下界)的仿射表达式：[] -> { S[] -> [(-x + t)]}.示例中当前维度对应的循环索引为t，x为下界值
+    // 获取t的约束的左边约束的仿射表达式：[] -> { S[] -> [(-x + t)]}
     aff_x = isl_constraint_get_aff(lower);
-    // 获取当前维度的右边约束(循环上界)的仿射表达式: [] -> { S[] -> [(y - t)]}.示例中当前维度对应的循环索引为t，y为上界值
+    // 获取t的约束的右边约束的仿射表达式: [] -> { S[] -> [(y - t)]}
     aff_y = isl_constraint_get_aff(upper);
-#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       切分维度的左约束的仿射表达式是： \n");
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       初始的t的左约束的仿射表达式是： \n");
     isl_aff_dump(aff_x);
-    printf("\n       切分维度的右约束的仿射表达式是： \n");
+    printf("\n       初始的t的右约束的仿射表达式是： \n");
     isl_aff_dump(aff_y);
     printf("\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
@@ -5112,7 +5165,7 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     if (!amp_partition_val)
         goto error;
     assert(amp_partition_val);
-#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
     printf("@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
     isl_aff_dump(amp_partition_val);
     printf("\n");
@@ -5125,20 +5178,72 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
      *       所以先求新y,然后就顺理成章得到了新x.
      */
     isl_aff *aff_left = isl_aff_copy(aff_x);
-    isl_aff *aff_right = isl_aff_copy(aff_y);
+    isl_aff *aff_right = isl_aff_copy(aff_x);
 
     // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
     aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
-    // 获取新的右分支的新仿射表达式（左约束,新x）。为了方便，直接对aff_left取反即可
+    // 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
+    // aff_right = isl_aff_sub(aff_right, isl_aff_copy(amp_partition_val));
     aff_right = isl_aff_neg(isl_aff_copy(aff_left));
+
+    //     /**
+    //      * @brief 左分支的右约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新y == x？ 新y == y？
+    //      *          如果新y == x，说明左分支不存在。
+    //      * @note 新y == x？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
+    //      */
+    //     isl_bool left_x_flag = isl_aff_plain_is_zero(isl_aff_add(aff_x, isl_aff_copy(aff_left)));
+    //     // isl_bool left_y_flag = isl_aff_plain_is_equal(aff_y, aff_left);
+    //     // printf("\n left_x_flag 是: %d \n", left_x_flag);
+    //     if (left_x_flag)
+    //         amp_bset->left_flag = isl_bool_false;
+    //     else
+    //         amp_bset->left_flag = isl_bool_true;
+
+    //     /**
+    //      * @brief 右分支的左约束的仿射表达式和最开始的两个的仿射表达式相同？即， 新x == x？ 新x == y？
+    //      *          如果新x == y, 说明右分支不存在。
+    //      * @note  新x == y？判断时，是通过将两个加起来，看是否等于0进行判断，因为两个里面自变量的符号是相反的
+    //      */
+    //     // isl_bool right_x_flag = isl_aff_plain_is_equal(aff_x, aff_right);
+    //     isl_bool right_y_flag = isl_aff_plain_is_zero(isl_aff_add(aff_y, isl_aff_copy(aff_right)));
+    //     // printf("\n right_y_flag 是: %d \n", right_y_flag);
+    //     if (right_y_flag)
+    //         amp_bset->right_flag = isl_bool_false;
+    //     else
+    //         amp_bset->right_flag = isl_bool_true;
+    // #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    //     printf("@DEBUG: \n       amp_bset 的标志是: \n");
+    //     printf("           amp_bset->left_flag  是: %d \n", amp_bset->left_flag);
+    //     printf("           amp_bset->right_flag 是: %d \n", amp_bset->right_flag);
+    // #endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
+    //     /**
+    //      * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val -1 + t )]}
+    //      *            这里是先用 (-x + t) - amp_partition_val,然后再拿结果减 1 求得的
+    //      * @note  注意前面已经获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，这里只需要减1即可
+    //      */
+    //     // 初始化来获取与aff_right同空间的常数为1的放射表达式
+    //     isl_space *space = isl_aff_get_domain_space(aff_right);
+    //     isl_aff *one = isl_aff_val_on_domain_space(space, isl_val_int_from_si(amp_bset->ctx, 1));
+    //     // printf("\n\n  one 是： \n");
+    //     // isl_aff_dump(one);
+
+    //     // 减1 得到最终的仿射表达式
+    //     // aff_right = isl_aff_sub(aff_right, one);
+    //     aff_right = isl_aff_neg(isl_aff_copy(aff_left));
     isl_aff_free(amp_partition_val);
-    isl_aff_free(aff_x);
-    isl_aff_free(aff_y);
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
+    printf("@DEBUG: \n       左分支的最终新仿射表达式是： \n");
+    isl_aff_dump(aff_left);
+    printf("\n       右分支的最终新仿射表达式是： \n");
+    isl_aff_dump(aff_right);
+    printf("\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     // 将左右的新的仿射表达式转换成约束
     isl_constraint *c_left = isl_inequality_from_aff(aff_left);
     isl_constraint *c_right = isl_inequality_from_aff(aff_right);
-#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
     printf("@DEBUG: \n       新的左分支的右约束是：  \n");
     isl_constraint_dump(c_left);
     printf("\n      新的右分支的左约束是：  \n");
@@ -5156,6 +5261,7 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     isl_basic_set_dump(amp_bset->right);
     printf("\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
     isl_constraint_free(upper);
     isl_constraint_free(lower);
     isl_basic_set_free(bset);
@@ -5165,19 +5271,20 @@ error:
     isl_constraint_free(upper);
     isl_constraint_free(lower);
     isl_basic_set_free(bset);
-    isl_aff_free(amp_partition_val);
-    isl_aff_free(aff_x);
-    isl_aff_free(aff_y);
 
     return isl_stat_error;
 }
 
 /**
- * @brief 根据划分比例，将基本语句basic_set的迭代空间划分成两个迭代空间，并返回
+ * @brief 这里默认basic_set是{S_0[c0,c1,c2] -> c0 >= x and c0 <= y and c1 >= x and c1 <= y and c2 >= x and c2 <= y}的形式.
+ *            另外,deepth从1开始,1即第一层循环,2即第2层循环,以此类推.
+ * @note 注意, 这里的左右是新的调度树的左右分支的filter,是一个相对左右的概念。
+ *             在mark标签和其他的语境中,high代表高精度,low代表低精度,higher代表更高精度,lower代表更低精度,后两者是一个相对（相互）的概念。
  */
-static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int rate)
+__isl_give struct amp_basic_set *
+amp_get_single_statement_constraints(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int deepth, int rate)
 {
-#define DEBUG_PARTITION_BY_RATE
+    // #define DEBUG_AMP_GET_SINGLE_STATEMENT_CONSTRAINTS
     struct amp_basic_set *amp_bset = amp_basic_set_init(ctx);
 
     // 检查basic_set不能为空
@@ -5186,7 +5293,7 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
         goto error;
     }
 
-    // 复制basic_set,初始化amp_bset的左右分支的两个basic_set
+    // 复制basic_set,初始化amp的左右分支的两个filter(basic_set)
     amp_bset->left = isl_basic_set_copy(basic_set);
     amp_bset->right = isl_basic_set_copy(basic_set);
 
@@ -5259,15 +5366,17 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
     printf("@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
 #endif // NO_PRINT
 
-    // 划分split_dim对应的维度
+    // 划分split_dim
+    amp_bset->ctx = ctx;
     amp_bset->rate = rate;
+    amp_bset->dept_dim = 0;
     if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, split_dim, &split_on_bound_pair, amp_bset) < 0)
         printf("\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
 
 #ifndef NO_PRINT
-    printf("@DEBUG: \n       对当前isl_basic_set进行迭代空间划分后,左迭代空间是:  \n");
+    printf("@DEBUG: \n       更新后,左filter是:  \n");
     isl_basic_set_dump(amp_bset->left);
-    printf("\n      对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
+    printf("\n      更新后,右filter是:  \n");
     isl_basic_set_dump(amp_bset->right);
     printf("\n");
 #endif // NO_PRINT
@@ -5282,97 +5391,156 @@ error:
     return NULL;
 }
 
-/**
- * @brief 存储迭代空间划分后的左右两个迭代空间(isl_union_set)以及划分的比例
- */
-struct amp_domain
+// 左右分支合在一个的list包含的类型
+enum amp_filters_type
 {
-    isl_ctx *ctx;
-    int rate;
-
-    /**
-     * left和right分别代表划分后的‘左’和‘右’两个迭代空间.
-     */
-    isl_union_set *left;
-    isl_union_set *right;
+    amp_filters_only_left = -1, // 这种情况，目前不能存在。
+    amp_filters_both = 0,
+    amp_filters_only_right = 1
 };
 
-/* This function is called for each set in a union_set.
- * If the dimension of the set is 0, we store the set in the both left and right.
- * else the dimension of the set > 0, we store
- */
-static isl_stat repartition_set(__isl_take isl_set *set, void *user)
+struct amp_union_set_list
 {
-    struct amp_domain *amp_domain = (struct amp_domain *)user;
-    isl_size dims;
+    isl_union_set_list *filters;
+    enum amp_filters_type type;
+};
 
-    // 获取该语句(isl_set)的维度数
-    dims = isl_set_n_dim(set);
-    if (dims < 0)
+/**
+ * @brief 目前修改完约束之后,往isl_union_set转换的时候,发现isl_basic_set_list不能直接转换回isl_union_set.于是在这部分,换了策略.
+ * 将一个isl_basic_set转换成amp_basic_set,其中分别包含了前后两部分的isl_basic_set,将前后两部分的各合并成一个isl_union_set_list,然后对其求并集,获得上下两部分的filter(isl_union_set).
+ */
+__isl_give struct amp_union_set_list *amp_get_filters(__isl_keep isl_ctx *ctx, __isl_take isl_union_set *domain, int rate)
+{
+    // #define DEBUG_AMP_GET_FILTERS
+
+    // 定义要拆分的循环的dim为1（目前拆第一层循环）
+    int separate_dim = 1;
+    isl_basic_set_list *basic_set_list;
+    isl_size basic_set_list_deepth;
+    isl_basic_set *bset;
+    // 目前的往回转换策略用到的
+    isl_union_set *uset_left_filter, *uset_right_filter;
+    isl_union_set_list *uset_list_left, *uset_list_right;
+    struct amp_basic_set *amp_bset;
+    // 为返回的结构体申请内存
+    struct amp_union_set_list *amp_filters = isl_calloc_type(ctx, struct amp_union_set_list);
+
+    if (!domain)
         goto error;
-    // 如果dims为0，说明语句就是简单的赋值，且不在循环体中，则将其同时放到左右两个子迭代空间中
-    else if (dims == 0)
+
+    //  isl_union_set(domain) -> isl_basic_set_list
+    basic_set_list = isl_union_set_get_basic_set_list(domain);
+    // 获取isl_basic_set_list的deepth
+    basic_set_list_deepth = isl_basic_set_list_n_basic_set(basic_set_list);
+#ifdef DEBUG_AMP_GET_FILTERS
+    printf("@DEBUG: \n       (isl_union_set(domain) -> isl_basic_set_list) result is: \n");
+    isl_basic_set_list_dump(basic_set_list);
+    printf("\n       the deepth of it is:  %d \n\n", basic_set_list_deepth);
+#endif //  DEBUG_AMP_GET_FILTERS
+
+    // 初始化(为其申请内存，设置大小)需要返回的filters(isl_union_set_list)
+    amp_filters->filters = isl_union_set_list_alloc(ctx, 0);
+    // 初始化左右分支filter的union_set_list（往回转换策略用）
+    uset_list_left = isl_union_set_list_alloc(ctx, 0);
+    uset_list_right = isl_union_set_list_alloc(ctx, 0);
+
+    /**
+     * @brief 如果是该语句是不含循环约束的语句实例，则该语句同时包含进左右分支当中.
+     *
+     * @note  skip代表左右分支拆分后插入到各自的isl_union_set_list（uset_list_left, uset_list_right）时需要跳过的大小.
+     */
+    int skip_left = 0;
+    int skip_right = 0;
+    for (isl_size basic_set_list_dim = 0; basic_set_list_dim < basic_set_list_deepth; basic_set_list_dim++)
     {
-        // TODO: 应该是amp_domain的left和right的初始化有问题，才需要先转换。
-        // 如果左右两个子迭代空间均为NULL,说明还未放入,直接转换即可
-        if (!amp_domain->left && !amp_domain->right)
+        // isl_basic_set_list获取对应dim时的isl_basic_set
+        bset = isl_basic_set_list_get_basic_set(basic_set_list, basic_set_list_dim);
+        isl_size con_deepth = isl_basic_set_n_constraint(bset);
+#ifdef DEBUG_AMP_GET_FILTERS
+        printf("@DEBUG: \n       对应 basic_set_list_dim = %d 时的 isl_basic_set is: \n", basic_set_list_dim);
+        isl_basic_set_dump(bset);
+        printf("\n       对应约束的深度是： %d . \n\n", con_deepth);
+#endif //  DEBUG_AMP_GET_FILTERS
+
+        // 如果是不含循环约束的语句实例
+        if (con_deepth < 1)
         {
-            amp_domain->left = isl_union_set_from_set(set);
-            amp_domain->right = isl_union_set_from_set(set);
+#ifdef DEBUG_AMP_GET_FILTERS
+            printf("@DEBUG: \n       (con_deepth(%d) < 1) is true!!! \n", con_deepth);
+#endif //  DEBUG_AMP_GET_FILTERS
+            uset_list_left = isl_union_set_list_insert(uset_list_left, basic_set_list_dim - skip_left, isl_union_set_from_basic_set(isl_basic_set_copy(bset)));
+            uset_list_right = isl_union_set_list_insert(uset_list_right, basic_set_list_dim - skip_right, isl_union_set_from_basic_set(isl_basic_set_copy(bset)));
+            continue;
         }
-        // 如果左右两个子迭代空间均非NULL,添加进去即可
-        else if (amp_domain->left && amp_domain->right)
+
+        // 获取新的约束,目前默认的separate_dim(要拆分的循环的dim)是0
+        amp_bset = amp_get_single_statement_constraints(ctx, bset, separate_dim, rate);
+        if (!amp_bset)
         {
-            amp_domain->left = isl_union_set_add_set(amp_domain->left, set);
-            amp_domain->right = isl_union_set_add_set(amp_domain->right, set);
-        }
-        // 如果左右两个子迭代空间为NULL情况不一致，说明存在错误。
-        else
-        {
-            printf("\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
+            printf("\n\033[31m@ERROR:\n       There are some errors because the get_single_statement_constraints function returned amp_bset is NULL , Now will return the original domain in filters way!!! \033[0m\n\n");
             goto error;
         }
-    }
-    // 如果dims大于0，说明语句循环体中，则将其切分后放到左右两个子迭代空间中
-    else
-    {
-        /**
-         * 获取basic_set_list及其大小,遍历所有的basic_set并对其进行划分
-         * @note 由于之前已经压缩过，对所有语句size均应为1).
-         */
-        isl_basic_set_list *bset_list = isl_set_get_basic_set_list(set);
-        isl_size sizes = isl_basic_set_list_n_basic_set(bset_list);
-        for (isl_size i = 0; i < sizes; i++)
+
+        // 逐语句将amp_basic_set的左右分支的isl_basic_set合并成isl_union_set_list
+        if (amp_bset->left_flag)
         {
-            isl_basic_set *bset = isl_basic_set_list_get_basic_set(bset_list, i);
-            // 根据rate将当前的一个basic_set划分成left和right两个，也即将该语句的迭代空间分成2个
-            struct amp_basic_set *amp_bset = partition_by_rate(amp_domain->ctx, bset, amp_domain->rate);
-            /** 根据情况进行判断，添加该语句的迭代空间到amp_domain中. */
-            if (!amp_domain->left && !amp_domain->right)
-            {
-                amp_domain->left = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
-                amp_domain->right = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
-            }
-            else if (amp_domain->left && amp_domain->right)
-            {
-                amp_domain->left = isl_union_set_add_set(amp_domain->left, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
-                amp_domain->right = isl_union_set_add_set(amp_domain->right, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
-            }
-            else
-            {
-                printf("\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
-                goto error;
-            }
-            amp_basic_set_free(amp_bset);
+            uset_list_left = isl_union_set_list_insert(uset_list_left, basic_set_list_dim - skip_left, isl_union_set_from_basic_set(amp_bset->left));
+        }
+        else
+        {
+            skip_left++;
+        }
+        if (amp_bset->right_flag)
+        {
+            uset_list_right = isl_union_set_list_insert(uset_list_right, basic_set_list_dim - skip_right, isl_union_set_from_basic_set(amp_bset->right));
+        }
+        else
+        {
+            skip_right++;
         }
     }
-    isl_set_free(set);
+    // 获取左右分支union_set_list里面包含的union_set的数量
+    isl_size left_size = isl_union_set_list_n_union_set(uset_list_left);
+    isl_size right_size = isl_union_set_list_n_union_set(uset_list_right);
 
-    return isl_stat_ok;
+    // 对isl_union_set_list求并集,获得左右分支的filter(isl_union_set)
+    if (left_size)
+        uset_left_filter = isl_union_set_list_union(uset_list_left);
+    if (right_size)
+        uset_right_filter = isl_union_set_list_union(uset_list_right);
+
+    // 左右分支的filter合并成amp_filters
+    if (left_size)
+        amp_filters->filters = isl_union_set_list_add(amp_filters->filters, uset_left_filter);
+    if (right_size)
+        amp_filters->filters = isl_union_set_list_add(amp_filters->filters, uset_right_filter);
+
+    // 判断类型
+    if (left_size && right_size)
+        amp_filters->type = amp_filters_both;
+    else if (left_size && !right_size)
+        amp_filters->type = amp_filters_only_left;
+    else if (!left_size && right_size)
+        amp_filters->type = amp_filters_only_right;
+    else
+        goto error;
+
+    // 释放内存
+    isl_union_set_free(domain);
+    isl_basic_set_list_free(basic_set_list);
+
+    return amp_filters;
 error:
-    isl_set_free(set);
+    isl_union_set_free(domain);
+    isl_basic_set_list_free(basic_set_list);
+    isl_union_set_list_free(uset_list_left);
+    isl_union_set_list_free(uset_list_right);
+    isl_union_set_free(uset_left_filter);
+    isl_union_set_free(uset_right_filter);
+    isl_union_set_list_free(amp_filters->filters);
+    amp_basic_set_free(amp_bset);
 
-    return isl_stat_error;
+    return NULL;
 }
 
 /**
@@ -5382,10 +5550,11 @@ error:
 __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched, int rate)
 {
     // #define DEBUG_AMP_RESCHEDULE
+
     isl_schedule *schedule;
     isl_schedule_node *node;
     isl_union_set *domain;
-
+    struct amp_union_set_list *amp_filters;
     // 切分的次数
     int division_number = 1;
 
@@ -5396,37 +5565,46 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
 
     for (int d = 0; d < division_number; d++)
     {
-        // 初始化amp_domian()
-        struct amp_domain *amp_domain;
-        amp_domain = isl_alloc_array(ctx, struct amp_domain, 1);
-        amp_domain->ctx = ctx;
-        amp_domain->rate = rate;
-        amp_domain->left = NULL;
-        amp_domain->right = NULL;
-
-        // 遍历所有的语句，对其迭代空间进行划分.
-        if (isl_union_set_foreach_set(domain, repartition_set, amp_domain) < 0)
+        // 获取带有自动混合精度的amp_filters(isl_union_set_list)[即,获取同时包含高精度和低精度的filters]
+        amp_filters = amp_get_filters(ctx, domain, rate);
+        if (!amp_filters)
         {
-            printf("\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
+            printf("\n\033[31m@ERROR:\n       There are some errors because the amp_filters(isl_union_set_list) is NULL, Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
-        assert(amp_domain);
+        assert(amp_filters);
+#ifdef DEBUG_AMP_RESCHEDULE
+        printf("@DEBUG: \n       the amp_filters(isl_union_set_list,或称为filters) is : \n");
+        isl_union_set_list_dump(amp_filters->filters);
+        printf("\n\n");
+#endif
 
-        // 将两个迭代空间拼接成filters(isl_union_set_list)
-        isl_union_set_list *filters = isl_union_set_list_alloc(ctx, 0);
-        filters = isl_union_set_list_add(filters, amp_domain->left);
-        filters = isl_union_set_list_add(filters, amp_domain->right);
-
-        // 将filters插入到根节点
+        // 将amp_filters插入到根节点
         node = isl_schedule_node_child(node, 0);
-        node = isl_schedule_node_insert_sequence(node, filters);
+        node = isl_schedule_node_insert_sequence(node, amp_filters->filters);
         if (!node)
         {
             printf("\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
-        node = isl_schedule_node_child(node, 1);
-        node = isl_schedule_node_child(node, 0);
+#ifdef DEBUG_AMP_RESCHEDULE
+        printf("@DEBUG: \n       after insert amp_filters(filters), the node is : \n");
+        isl_schedule_node_dump(node);
+        printf("\n\n");
+#endif
+
+        if (amp_filters->type == amp_filters_both)
+        {
+            node = isl_schedule_node_child(node, 1);
+            node = isl_schedule_node_child(node, 0);
+        }
+        else if (amp_filters->type == amp_filters_only_right)
+        {
+            node = isl_schedule_node_child(node, 0);
+            node = isl_schedule_node_child(node, 0);
+        }
+        else
+            goto error;
 
         // 插入mark(thread)结点
         isl_id *id = isl_id_alloc(ctx, "thread", NULL);
@@ -5471,12 +5649,10 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
     // 释放内存
     isl_schedule_free(sched);
     isl_schedule_node_free(node);
-    isl_union_set_free(domain);
 
     return schedule;
 error:
     isl_schedule_node_free(node);
-    isl_union_set_free(domain);
 
     return sched;
 }
@@ -5499,7 +5675,7 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
 
     // 获取混合精度的比例
     rate = (int)prog->scop->options->automatic_mixed_precision_rate;
-    // 如果比例不合法(小于0或者大于99),则不进行混合精度,将原始调度返回.
+    // 如果比例 < 1, 则不进行混合精度,将原始调度返回.
     if (rate < 0 || rate > 99)
     {
         printf("\n\033[31m@WARNING:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
