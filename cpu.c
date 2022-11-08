@@ -603,8 +603,8 @@ static __isl_give isl_printer *print_user_with_amp(__isl_take isl_printer *p,
 #ifdef DEBUG_PRINT_USER_WITH_AMP
 	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n");
 	isl_id_dump(id);
-	printf("\n       the name is %s \n\n", isl_id_get_name(id));
-	// printf("\n\n");
+	fprintf(stderr, "\n       the name is %s \n\n", isl_id_get_name(id));
+	// fprintf(stderr, "\n\n");
 #endif // DEBUG_PRINT_USER_WITH_AMP
 
 	// if (is_amp_kernel)
@@ -635,9 +635,9 @@ static __isl_give isl_printer *print_user_with_amp(__isl_take isl_printer *p,
 	}
 
 #ifdef DEBUG_PRINT_USER_WITH_AMP
-	printf("@DEBUG: \n       in print_user_with_amp, the id is : \n");
+	fprintf(stderr, "@DEBUG: \n       in print_user_with_amp, the id is : \n");
 	isl_id_dump(id);
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_PRINT_USER_WITH_AMP
 	if (stmt)
 	{
@@ -1380,17 +1380,17 @@ static __isl_give isl_ast_node *create_access_leaf(struct amp_ppcg_kernel *kerne
 	isl_ctx *ctx;
 
 	if (kernel == NULL)
-		printf("\n\033[31m@ERROR:\n       the amp_ppcg_kernel in create_access_leaf,is NULL!!!  \033[0m\n\n");
+		fprintf(stderr, "\n\033[31m@ERROR:\n       the amp_ppcg_kernel in create_access_leaf,is NULL!!!  \033[0m\n\n");
 	if (!node)
 		return NULL;
 	ctx = isl_ast_node_get_ctx(node);
 
 #ifdef DEBUG_CREATE_ACCESS_LEAF
-	printf("@DEBUG: \n       in create_access_leaf, the node is: \n");
+	fprintf(stderr, "@DEBUG: \n       in create_access_leaf, the node is: \n");
 	isl_ast_node_dump(node);
-	printf("\n       the build is: \n");
+	fprintf(stderr, "\n       the build is: \n");
 	isl_ast_build_dump(build);
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_CREATE_ACCESS_LEAF
 
 	stmt = isl_calloc_type(ctx, struct ppcg_kernel_stmt);
@@ -1417,7 +1417,7 @@ static __isl_give isl_ast_node *create_access_leaf(struct amp_ppcg_kernel *kerne
 	if (tile->tiling == NULL)
 	{
 
-		printf("\n\033[31m@ERROR:\n       the tile->tiling in create_access_leaf,is NULL!!!  \033[0m\n\n");
+		fprintf(stderr, "\n\033[31m@ERROR:\n       the tile->tiling in create_access_leaf,is NULL!!!  \033[0m\n\n");
 		isl_multi_aff *ma = isl_multi_aff_copy(create_from_access(kernel->ctx, group, 1));
 		pma2 = isl_pw_multi_aff_from_multi_aff(isl_multi_aff_copy(ma));
 	}
@@ -1464,11 +1464,11 @@ static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node 
 	void *p;
 
 #ifdef DEBUG_AT_EACH_DOMAIN_WITH_AMP
-	printf("@DEBUG: \n       at start of the at_each_domain_with_amp, the node is: \n");
+	fprintf(stderr, "@DEBUG: \n       at start of the at_each_domain_with_amp, the node is: \n");
 	isl_ast_node_dump(node);
-	printf("\n       the build is :\n");
+	fprintf(stderr, "\n       the build is :\n");
 	isl_ast_build_dump(build);
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_AT_EACH_DOMAIN_WITH_AMP
 
 	ctx = isl_ast_node_get_ctx(node);
@@ -1485,11 +1485,11 @@ static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node 
 	isl_ast_expr_free(arg);
 
 #ifdef DEBUG_AT_EACH_DOMAIN_WITH_AMP
-	printf("@DEBUG: \n       the id、name、user of arg is: \n");
+	fprintf(stderr, "@DEBUG: \n       the id、name、user of arg is: \n");
 	isl_id_dump(id);
-	printf("\n       the name is %s :\n", name);
-	printf("\n       the user(p) is %p :\n", p);
-	printf("\n\n");
+	fprintf(stderr, "\n       the name is %s :\n", name);
+	fprintf(stderr, "\n       the user(p) is %p :\n", p);
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_AT_EACH_DOMAIN_WITH_AMP
 
 	amp_stmt = find_amp_stmt(data->prog, id);
@@ -1505,7 +1505,7 @@ static __isl_give isl_ast_node *at_each_domain_with_amp(__isl_take isl_ast_node 
 		return create_access_leaf(data->kernel, group, node, build);
 	}
 
-	printf("\n\033[31m@ERROR:\n       the at_each_domain_with_amp function meets an unexpected errors.  \033[0m\n\n");
+	fprintf(stderr, "\n\033[31m@ERROR:\n       the at_each_domain_with_amp function meets an unexpected errors.  \033[0m\n\n");
 	return isl_ast_node_set_annotation(node, id);
 	// // 下面是原始的
 	// stmt->stmt = find_stmt(scop, id);
@@ -1706,9 +1706,9 @@ static isl_bool at_node_with_amp(__isl_keep isl_ast_node *node, void *user)
 	isl_printer **p = user;
 
 #ifdef DEBUG_AT_NODE_WITH_AMP
-	printf("@DEBUG: \n       at_node_with_amp function,the ast node is: \n");
+	fprintf(stderr, "@DEBUG: \n       at_node_with_amp function,the ast node is: \n");
 	isl_ast_node_dump(node);
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_AT_NODE_WITH_AMP
 
 	if (isl_ast_node_get_type(node) != isl_ast_node_user)
@@ -1732,7 +1732,7 @@ static isl_bool at_node_with_amp(__isl_keep isl_ast_node *node, void *user)
 
 	if (is_kernel)
 	{
-		printf("\n\n\n the is kernel is true! but return directly! \n\n\n");
+		fprintf(stderr, "\n\n\n the is kernel is true! but return directly! \n\n\n");
 		// *p = ppcg_ast_expr_print_macros(kernel->tree, *p);
 		return isl_bool_true;
 	}
@@ -1945,9 +1945,9 @@ static __isl_give isl_printer *print_scop_with_amp(__isl_take isl_schedule *sche
 	int depth;
 
 #ifdef DEBUG_PRINT_SCOP_WITH_AMP
-	printf("@DEBUG: \n       at start of cpu.c-print scop,the schedule is: \n");
+	fprintf(stderr, "@DEBUG: \n       at start of cpu.c-print scop,the schedule is: \n");
 	isl_schedule_dump(schedule);
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 #endif // DEBUG_PRINT_SCOP_WITH_AMP
 
 	data.prog = prog;
@@ -2081,7 +2081,7 @@ __isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_nod
     ctx = isl_space_get_ctx(space);
 
 #ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
-    printf("@DEBUG: \n       the split tile len is : %d，the string of split tile sizes is : '%s'. \n", *tile_len, scop->options->tile_sizes);
+    fprintf(stderr, "@DEBUG: \n       the split tile len is : %d，the string of split tile sizes is : '%s'. \n", *tile_len, scop->options->tile_sizes);
 #endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     tile_size = isl_alloc_array(ctx, int, *tile_len);
@@ -2092,14 +2092,14 @@ __isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_nod
         tile_size[i] = scop->options->tile_size;
 
 #ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
-    printf("@DEBUG: \n       the split tile sizes is : \n");
+    fprintf(stderr, "@DEBUG: \n       the split tile sizes is : \n");
     for (i = 0; i < *tile_len; i++)
-        printf("           size[%d] : %d \n", i, tile_size[i]);
+        fprintf(stderr, "           size[%d] : %d \n", i, tile_size[i]);
 #endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     size = isl_set_read_from_str(ctx, scop->options->tile_sizes);
 #ifdef DEBUG_SPLIT_TILE_READ_TILE_SIZES
-    printf("@DEBUG: \n       tile_sizes is %s ,the updated size is: \n", scop->options->tile_sizes);
+    fprintf(stderr, "@DEBUG: \n       tile_sizes is %s ,the updated size is: \n", scop->options->tile_sizes);
     isl_set_dump(size);
 #endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
@@ -2107,9 +2107,9 @@ __isl_give isl_multi_val *split_tile_read_tile_sizes(__isl_keep isl_schedule_nod
         goto error;
 
 #ifndef DEBUG_SPLIT_TILE_READ_TILE_SIZES
-    printf("@DEBUG: \n       the split tile sizes is : \n");
+    fprintf(stderr, "@DEBUG: \n       the split tile sizes is : \n");
     for (i = 0; i < *tile_len; i++)
-        printf("           size[%d] : %d \n", i, tile_size[i]);
+        fprintf(stderr, "           size[%d] : %d \n", i, tile_size[i]);
 #endif // DEBUG_SPLIT_TILE_READ_TILE_SIZES
 
     mv = ppcg_multi_val_from_int_list(space, tile_size);
@@ -2379,10 +2379,10 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
     // #define DEBUG_GENERATE
 // 调试显示参数
 #ifdef DEBUG_GENERATE
-    printf("@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
-    printf("              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
-    printf("              the amp rate : %d ( e.g: 50 means - the higher precision accounts for 50/100 )\n", options->automatic_mixed_precision_rate);
-    printf("\n\n");
+    fprintf(stderr, "@DEBUG: \n       automatic mixed precision paramaters are on the below:\n");
+    fprintf(stderr, "              the amp is   : %d ( 1==on, 0==off ) \n", options->automatic_mixed_precision);
+    fprintf(stderr, "              the amp rate : %d ( e.g: 50 means - the higher precision accounts for 50/100 )\n", options->automatic_mixed_precision_rate);
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_GENERATE
 
 	isl_schedule *schedule;
@@ -2395,32 +2395,32 @@ static __isl_give isl_printer *generate(__isl_take isl_printer *p,
 		// 这里先进行PPCG的调度
 		schedule = get_schedule(scop, options);
 #ifdef DEBUG_GENERATE
-		printf("@DEBUG: \n       ppcg calcu schedule is: \n");
+		fprintf(stderr, "@DEBUG: \n       ppcg calcu schedule is: \n");
 		isl_schedule_dump(schedule);
-		printf("\n\n");
+		fprintf(stderr, "\n\n");
 #endif // DEBUG_GENERATE
 
 		isl_ctx *ctx = isl_printer_get_ctx(p);
 		amp_prog *prog = amp_prog_alloc(ctx, scop);
 		if (!prog)
 		{
-			printf("\n\033[31m@ERROR:\n       There are some errors because the alloced amp_prog is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
+			fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the alloced amp_prog is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}
 
 		// amp 再调度
 		isl_schedule *reschedule = amp_schedule_again(ctx, prog, isl_schedule_copy(schedule));
 #ifdef DEBUG_GENERATE
-		printf("@DEBUG: \n       amp again calcu schedule is: \n");
+		fprintf(stderr, "@DEBUG: \n       amp again calcu schedule is: \n");
 		isl_schedule_dump(reschedule);
-		printf("\n\n");
+		fprintf(stderr, "\n\n");
 #endif // DEBUG_GENERATE
 		if (!reschedule || (reschedule == schedule))
 		{
 			if (!reschedule)
-				printf("\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
+				fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the schedule calcuted again by amp is NULL, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			else
-				printf("\n\033[31m@WARNING:\n       The schedule calcuted again by amp is the same to original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
+				fprintf(stderr, "\n\033[31m@WARNING:\n       The schedule calcuted again by amp is the same to original schedule, Now will print cpu code with the ppcg calcuted schedule !!! \033[0m\n\n");
 			amp_prog_free(prog);
 			return print_cpu_with_schedule(p, scop, schedule, options);
 		}

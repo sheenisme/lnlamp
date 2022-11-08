@@ -30,30 +30,30 @@ void amp_stmt_access_dump(struct amp_stmt_access *access)
 {
     if (access)
     {
-        printf("       the   amp_stmt_access  is on the below :\n");
-        printf("          the       read      is %d \n", access->read);
-        printf("          the       write     is %d \n", access->write);
-        printf("          the    exact_write  is %d \n", access->exact_write);
-        printf("          the   fixed_element is %d \n", access->fixed_element);
-        printf("          the      n_index    is %d \n", access->n_index);
-        printf("          the    exact_write  is %d \n", access->read);
-        printf("          the     access      is:   \n");
+        fprintf(stderr, "       the   amp_stmt_access  is on the below :\n");
+        fprintf(stderr, "          the       read      is %d \n", access->read);
+        fprintf(stderr, "          the       write     is %d \n", access->write);
+        fprintf(stderr, "          the    exact_write  is %d \n", access->exact_write);
+        fprintf(stderr, "          the   fixed_element is %d \n", access->fixed_element);
+        fprintf(stderr, "          the      n_index    is %d \n", access->n_index);
+        fprintf(stderr, "          the    exact_write  is %d \n", access->read);
+        fprintf(stderr, "          the     access      is:   \n");
         isl_map_dump(access->access);
-        printf("          the  tagged_access  is: \n");
+        fprintf(stderr, "          the  tagged_access  is: \n");
         isl_map_dump(access->tagged_access);
-        printf("          the     ref_id      is: \n");
+        fprintf(stderr, "          the     ref_id      is: \n");
         isl_id_dump(access->ref_id);
-        printf("          the      next       is: \n");
+        fprintf(stderr, "          the      next       is: \n");
         if (access->next)
         {
             amp_stmt_access_dump(access->next);
         }
         else
-            printf("NULL\n");
+            fprintf(stderr, "NULL\n");
     }
     else
     {
-        printf("    @WARN:          sorry, the amp_stmt_access is NULL !!! \n");
+        fprintf(stderr, "    @WARN:          sorry, the amp_stmt_access is NULL !!! \n");
     }
 }
 
@@ -62,27 +62,27 @@ void amp_group_data_dump(struct amp_group_data *data)
 {
     if (data)
     {
-        printf("       the     amp_group_data    is on the below : \n");
-        printf("          the   kernel_depth     is %d \n", data->kernel_depth);
-        printf("          the   shared_depth     is %d \n", data->shared_depth);
-        printf("          the   thread_depth     is %d \n", data->thread_depth);
-        printf("          the     n_thread       is %d \n", data->n_thread);
-        // printf("          the   privatization    is:   \n");
+        fprintf(stderr, "       the     amp_group_data    is on the below : \n");
+        fprintf(stderr, "          the   kernel_depth     is %d \n", data->kernel_depth);
+        fprintf(stderr, "          the   shared_depth     is %d \n", data->shared_depth);
+        fprintf(stderr, "          the   thread_depth     is %d \n", data->thread_depth);
+        fprintf(stderr, "          the     n_thread       is %d \n", data->n_thread);
+        // fprintf(stderr, "          the   privatization    is:   \n");
         // isl_set_dump(data->privatization);
-        printf("          the    host_sched     is:   \n");
+        fprintf(stderr, "          the    host_sched     is:   \n");
         isl_union_map_dump(data->host_sched);
-        printf("          the   shared_sched     is:   \n");
+        fprintf(stderr, "          the   shared_sched     is:   \n");
         isl_union_map_dump(data->shared_sched);
-        printf("          the    copy_sched      is:   \n");
+        fprintf(stderr, "          the    copy_sched      is:   \n");
         isl_union_map_dump(data->copy_sched);
-        printf("          the   thread_sched     is:   \n");
+        fprintf(stderr, "          the   thread_sched     is:   \n");
         isl_union_map_dump(data->thread_sched);
-        printf("          the    full_sched      is:   \n");
+        fprintf(stderr, "          the    full_sched      is:   \n");
         isl_union_map_dump(data->full_sched);
     }
     else
     {
-        printf("    @WARN:\n       sorry, the amp_group_data is NULL !!! \n");
+        fprintf(stderr, "    @WARN:\n       sorry, the amp_group_data is NULL !!! \n");
     }
 }
 
@@ -91,23 +91,23 @@ void amp_array_bound_dump(struct amp_array_bound *bound)
 {
     if (bound)
     {
-        printf("       the amp_array_bound is on the below :\n");
-        printf("          the      size    is: \n");
+        fprintf(stderr, "       the amp_array_bound is on the below :\n");
+        fprintf(stderr, "          the      size    is: \n");
         if (bound->size)
             isl_val_dump(bound->size);
-        printf("          the      lb      is: \n");
+        fprintf(stderr, "          the      lb      is: \n");
         if (bound->lb)
             isl_aff_dump(bound->lb);
-        printf("          the    stride    is: \n");
+        fprintf(stderr, "          the    stride    is: \n");
         if (bound->stride)
             isl_val_dump(bound->stride);
-        printf("          the    shift     is: \n");
+        fprintf(stderr, "          the    shift     is: \n");
         if (bound->shift)
             isl_aff_dump(bound->shift);
     }
     else
     {
-        printf("   @WARN: \n       sorry, the amp_array_bound is NULL !!! \n");
+        fprintf(stderr, "   @WARN: \n       sorry, the amp_array_bound is NULL !!! \n");
     }
 }
 
@@ -116,18 +116,18 @@ void amp_array_tile_dump(struct amp_array_tile *tile)
 {
     if (tile)
     {
-        printf("       the amp_array_tile is on the below :\n");
-        printf("          the   depth     is %d \n", tile->depth);
-        printf("          the     n       is %d \n", tile->n);
-        printf("          the   tiling    is:   \n");
+        fprintf(stderr, "       the amp_array_tile is on the below :\n");
+        fprintf(stderr, "          the   depth     is %d \n", tile->depth);
+        fprintf(stderr, "          the     n       is %d \n", tile->n);
+        fprintf(stderr, "          the   tiling    is:   \n");
         if (tile->tiling)
             isl_multi_aff_dump(tile->tiling);
-        printf("          the   bound     is:   \n");
+        fprintf(stderr, "          the   bound     is:   \n");
         amp_array_bound_dump(tile->bound);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_array_tile is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_array_tile is NULL !!! \n");
     }
 }
 
@@ -136,43 +136,43 @@ void amp_array_info_dump(struct amp_array_info *info)
 {
     if (info)
     {
-        printf("       the       amp_array_info     is on the below :\n");
-        printf("          the         type          is %s \n", info->type);
-        printf("          the         name          is %s \n", info->name);
-        printf("          the         size          is %d \n", info->size);
-        printf("          the        space          is :  \n");
+        fprintf(stderr, "       the       amp_array_info     is on the below :\n");
+        fprintf(stderr, "          the         type          is %s \n", info->type);
+        fprintf(stderr, "          the         name          is %s \n", info->name);
+        fprintf(stderr, "          the         size          is %d \n", info->size);
+        fprintf(stderr, "          the        space          is :  \n");
         isl_space_dump(info->space);
-        printf("          the    declared_extent    is :  \n");
+        fprintf(stderr, "          the    declared_extent    is :  \n");
         isl_set_dump(info->declared_extent);
-        printf("          the     declared_size     is :  \n");
+        fprintf(stderr, "          the     declared_size     is :  \n");
         isl_ast_expr_dump(info->declared_size);
-        printf("          the        extent         is :  \n");
+        fprintf(stderr, "          the        extent         is :  \n");
         isl_set_dump(info->extent);
-        printf("          the        bound          is :  \n");
+        fprintf(stderr, "          the        bound          is :  \n");
         isl_multi_pw_aff_dump(info->bound);
-        printf("          the      bound_expr       is :  \n");
+        fprintf(stderr, "          the      bound_expr       is :  \n");
         isl_ast_expr_dump(info->bound_expr);
-        printf("          the         n_ref         is %d \n", info->n_ref);
+        fprintf(stderr, "          the         n_ref         is %d \n", info->n_ref);
         for (int r = 0; r < info->n_ref; r++)
         {
-            printf("          the         refs[%d]      is:   \n", r);
+            fprintf(stderr, "          the         refs[%d]      is:   \n", r);
             amp_stmt_access_dump(info->refs[r]);
         }
-        printf("          the        n_index        is %d \n", info->n_index);
-        printf("          the       accessed        is %d \n", info->accessed);
-        printf("          the   read_only_scalar    is %d \n", info->read_only_scalar);
-        printf("          the has_compound_element  is %d \n", info->has_compound_element);
-        printf("          the  only_fixed_element   is %d \n", info->only_fixed_element);
-        printf("          the         local         is %d \n", info->local);
-        printf("          the    declare_local      is %d \n", info->declare_local);
-        printf("          the         global        is %d \n", info->global);
-        printf("          the      linearize        is %d \n", info->linearize);
-        printf("          the      dep_order        is :  \n");
+        fprintf(stderr, "          the        n_index        is %d \n", info->n_index);
+        fprintf(stderr, "          the       accessed        is %d \n", info->accessed);
+        fprintf(stderr, "          the   read_only_scalar    is %d \n", info->read_only_scalar);
+        fprintf(stderr, "          the has_compound_element  is %d \n", info->has_compound_element);
+        fprintf(stderr, "          the  only_fixed_element   is %d \n", info->only_fixed_element);
+        fprintf(stderr, "          the         local         is %d \n", info->local);
+        fprintf(stderr, "          the    declare_local      is %d \n", info->declare_local);
+        fprintf(stderr, "          the         global        is %d \n", info->global);
+        fprintf(stderr, "          the      linearize        is %d \n", info->linearize);
+        fprintf(stderr, "          the      dep_order        is :  \n");
         isl_union_map_dump(info->dep_order);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_array_info is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_array_info is NULL !!! \n");
     }
 }
 
@@ -181,25 +181,25 @@ void amp_array_ref_group_dump(struct amp_array_ref_group *group)
 {
     if (group)
     {
-        printf("       the amp_array_ref_group is on the below :\n");
-        printf("          the      nr          is %d \n", group->nr);
-        printf("          the    write         is %d \n", group->write);
-        printf("          the  exact_write     is %d \n", group->exact_write);
-        printf("          the    slice         is %d \n", group->slice);
-        printf("          the   min_depth      is %d \n", group->min_depth);
-        printf("          the     n_ref        is %d \n", group->n_ref);
-        printf("          the    access        is: \n");
+        fprintf(stderr, "       the amp_array_ref_group is on the below :\n");
+        fprintf(stderr, "          the      nr          is %d \n", group->nr);
+        fprintf(stderr, "          the    write         is %d \n", group->write);
+        fprintf(stderr, "          the  exact_write     is %d \n", group->exact_write);
+        fprintf(stderr, "          the    slice         is %d \n", group->slice);
+        fprintf(stderr, "          the   min_depth      is %d \n", group->min_depth);
+        fprintf(stderr, "          the     n_ref        is %d \n", group->n_ref);
+        fprintf(stderr, "          the    access        is: \n");
         isl_map_dump(group->access);
-        printf("          the  shared_tile     is: \n");
+        fprintf(stderr, "          the  shared_tile     is: \n");
         amp_array_tile_dump(group->shared_tile);
-        printf("          the     array        is: \n");
+        fprintf(stderr, "          the     array        is: \n");
         amp_array_info_dump(group->array);
-        // printf("          the    local_array   is: \n");
+        // fprintf(stderr, "          the    local_array   is: \n");
         // amp_local_array_info_dump(group->local_array);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_array_ref_group is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_array_ref_group is NULL !!! \n");
     }
 }
 
@@ -208,25 +208,25 @@ void amp_local_array_info_dump(struct amp_local_array_info *info)
 {
     if (info)
     {
-        printf("       the amp_local_array_info is on the below :\n");
-        printf("          the     global        is %d \n", info->global);
-        printf("          the     n_index       is %d \n", info->n_index);
-        printf("          the      bound        is :  \n");
+        fprintf(stderr, "       the amp_local_array_info is on the below :\n");
+        fprintf(stderr, "          the     global        is %d \n", info->global);
+        fprintf(stderr, "          the     n_index       is %d \n", info->n_index);
+        fprintf(stderr, "          the      bound        is :  \n");
         isl_multi_pw_aff_dump(info->bound);
-        printf("          the     bound_expr    is :  \n");
+        fprintf(stderr, "          the     bound_expr    is :  \n");
         isl_ast_expr_dump(info->bound_expr);
-        printf("          the     n_group       is %d \n", info->n_group);
+        fprintf(stderr, "          the     n_group       is %d \n", info->n_group);
         for (int i = 0; i < info->n_group; i++)
         {
-            printf("          the    groups[%d]     is :  \n", i);
+            fprintf(stderr, "          the    groups[%d]     is :  \n", i);
             amp_array_ref_group_dump(info->groups[i]);
         }
-        printf("          the     array         is :  \n");
+        fprintf(stderr, "          the     array         is :  \n");
         amp_array_info_dump(info->array);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_local_array_info is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_local_array_info is NULL !!! \n");
     }
 }
 
@@ -235,15 +235,15 @@ void amp_stmt_dump(struct amp_stmt *stmts)
 {
     if (stmts)
     {
-        printf("       the      amp_stmt   is on the below :\n");
-        printf("          the      id      is: \n");
+        fprintf(stderr, "       the      amp_stmt   is on the below :\n");
+        fprintf(stderr, "          the      id      is: \n");
         isl_id_dump(stmts->id);
-        printf("          the   accesses   is: \n");
+        fprintf(stderr, "          the   accesses   is: \n");
         amp_stmt_access_dump(stmts->accesses);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_stmt is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_stmt is NULL !!! \n");
     }
 }
 
@@ -252,43 +252,43 @@ void amp_prog_dump(struct amp_prog *prog)
 {
     if (prog)
     {
-        printf("       the      amp_prog       is on the below :\n");
-        printf("          the      context     is: \n");
+        fprintf(stderr, "       the      amp_prog       is on the below :\n");
+        fprintf(stderr, "          the      context     is: \n");
         isl_set_dump(prog->context);
-        printf("          the      read        is: \n");
+        fprintf(stderr, "          the      read        is: \n");
         isl_union_map_dump(prog->read);
-        printf("          the    may_write     is: \n");
+        fprintf(stderr, "          the    may_write     is: \n");
         isl_union_map_dump(prog->may_write);
-        printf("          the    must_write    is: \n");
+        fprintf(stderr, "          the    must_write    is: \n");
         isl_union_map_dump(prog->must_write);
-        printf("          the tagged_must_kill is: \n");
+        fprintf(stderr, "          the tagged_must_kill is: \n");
         isl_union_map_dump(prog->tagged_must_kill);
-        printf("          the   may_persist   is: \n");
+        fprintf(stderr, "          the   may_persist   is: \n");
         isl_union_set_dump(prog->may_persist);
-        printf("          the      to_outer   is: \n");
+        fprintf(stderr, "          the      to_outer   is: \n");
         isl_union_map_dump(prog->to_outer);
-        printf("          the      to_inner   is: \n");
+        fprintf(stderr, "          the      to_inner   is: \n");
         isl_union_map_dump(prog->to_inner);
-        printf("          the  any_to_outer   is: \n");
+        fprintf(stderr, "          the  any_to_outer   is: \n");
         isl_union_map_dump(prog->any_to_outer);
-        printf("          the    array_order  is: \n");
+        fprintf(stderr, "          the    array_order  is: \n");
         isl_union_map_dump(prog->array_order);
-        printf("          the   n_stmts   is: %d \n", prog->n_stmts);
+        fprintf(stderr, "          the   n_stmts   is: %d \n", prog->n_stmts);
         for (int s = 0; s < prog->n_stmts; s++)
         {
-            printf("          the  stmts[%d]  is: \n", s);
+            fprintf(stderr, "          the  stmts[%d]  is: \n", s);
             amp_stmt_dump(prog->stmts + s);
         }
-        printf("          the   n_array   is: %d \n", prog->n_array);
+        fprintf(stderr, "          the   n_array   is: %d \n", prog->n_array);
         for (int a = 0; a < prog->n_array; a++)
         {
-            printf("          the  array[%d]  is: \n", a);
+            fprintf(stderr, "          the  array[%d]  is: \n", a);
             amp_array_info_dump(prog->array + a);
         }
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_prog is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_prog is NULL !!! \n");
     }
 }
 
@@ -297,44 +297,44 @@ void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
 {
     if (kernel)
     {
-        printf("       the   amp_ppcg_kernel  is on the below :\n");
-        printf("          the       id        is: %d \n", kernel->id);
-        printf("          the      prog       is: \n");
+        fprintf(stderr, "       the   amp_ppcg_kernel  is on the below :\n");
+        fprintf(stderr, "          the       id        is: %d \n", kernel->id);
+        fprintf(stderr, "          the      prog       is: \n");
         amp_prog_dump(kernel->prog);
-        printf("          the   size_expr     is: \n");
+        fprintf(stderr, "          the   size_expr     is: \n");
         isl_ast_expr_dump(kernel->size_expr);
-        printf("          the    context      is: \n");
+        fprintf(stderr, "          the    context      is: \n");
         isl_set_dump(kernel->context);
-        printf("          the     core        is: \n");
+        fprintf(stderr, "          the     core        is: \n");
         isl_union_set_dump(kernel->core);
-        printf("          the    arrays       is: \n");
+        fprintf(stderr, "          the    arrays       is: \n");
         isl_union_set_dump(kernel->arrays);
-        printf("          the    contraction  is: \n");
+        fprintf(stderr, "          the    contraction  is: \n");
         isl_union_pw_multi_aff_dump(kernel->contraction);
-        printf("          the expanded_domain is: \n");
+        fprintf(stderr, "          the expanded_domain is: \n");
         isl_union_set_dump(kernel->expanded_domain);
-        printf("          the     space       is: \n");
+        fprintf(stderr, "          the     space       is: \n");
         isl_space_dump(kernel->space);
-        printf("          the    n_array      is: %d \n", kernel->n_array);
+        fprintf(stderr, "          the    n_array      is: %d \n", kernel->n_array);
         for (int r = 0; r < kernel->n_array; r++)
         {
-            printf("          the     array[%d]       is: \n", r);
+            fprintf(stderr, "          the     array[%d]       is: \n", r);
             amp_local_array_info_dump(kernel->array);
         }
-        // printf("          the     array       is: \n");
+        // fprintf(stderr, "          the     array       is: \n");
         // amp_local_array_info_dump(kernel->array);
-        printf("          the      n_var      is: %d \n", kernel->n_var);
-        printf("          the  thread_filter  is: \n");
+        fprintf(stderr, "          the      n_var      is: %d \n", kernel->n_var);
+        fprintf(stderr, "          the  thread_filter  is: \n");
         isl_union_set_dump(kernel->thread_filter);
-        printf("          the  copy_schedule  is: \n");
+        fprintf(stderr, "          the  copy_schedule  is: \n");
         isl_union_pw_multi_aff_dump(kernel->copy_schedule);
-        printf("          the copy_schedule_dim is: %d \n", kernel->copy_schedule_dim);
-        printf("          the       tree       is: \n");
+        fprintf(stderr, "          the copy_schedule_dim is: %d \n", kernel->copy_schedule_dim);
+        fprintf(stderr, "          the       tree       is: \n");
         isl_ast_node_dump(kernel->tree);
     }
     else
     {
-        printf("    @WARN: \n       sorry, the amp_ppcg_kernel is NULL !!! \n");
+        fprintf(stderr, "    @WARN: \n       sorry, the amp_ppcg_kernel is NULL !!! \n");
     }
 }
 
@@ -401,12 +401,12 @@ static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array)
     }
 
 #ifdef DEBUG_COLLECT_REFERRNCES
-    printf("@DEBUG: \n       the array->refs of the collect_references function is:\n");
+    fprintf(stderr, "@DEBUG: \n       the array->refs of the collect_references function is:\n");
     for (int r = 0; r < array->n_ref; r++)
     {
-        printf("       array->refs[%d] :\n", r);
+        fprintf(stderr, "       array->refs[%d] :\n", r);
         amp_stmt_access_dump(array->refs[r]);
-        printf("\n");
+        fprintf(stderr, "\n");
     }
 #endif // DEBUG_COLLECT_REFERRNCES
     return isl_stat_ok;
@@ -1349,9 +1349,9 @@ static __isl_give isl_schedule_node *atomic_ancestors(
     // #define DEBUG_ATOMIC_ANCESTORS
 
 #ifdef DEBUG_ATOMIC_ANCESTORS
-    printf("@DEBUG: \n       at the start of the atomic_ancestors function,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       at the start of the atomic_ancestors function,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ATOMIC_ANCESTORS
     int pos;
 
@@ -1368,9 +1368,9 @@ static __isl_give isl_schedule_node *atomic_ancestors(
     node = isl_schedule_node_child(node, pos);
 
 #ifdef DEBUG_ATOMIC_ANCESTORS
-    printf("@DEBUG: \n       at the end of the atomic_ancestors function,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       at the end of the atomic_ancestors function,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ATOMIC_ANCESTORS
 
     return node;
@@ -1859,9 +1859,9 @@ static __isl_give isl_union_map *amp_remove_local_accesses(
     }
 
 #ifdef DEBUG_AMP_REMOVE_LOCAL_ACCESSES
-    printf("@DEBUG: \n       in start of amp_remove_local_accesses(no group), the access is:\n");
+    fprintf(stderr, "@DEBUG: \n       in start of amp_remove_local_accesses(no group), the access is:\n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_REMOVE_LOCAL_ACCESSES
 
     // compute_live_out(ps);
@@ -1891,10 +1891,10 @@ static __isl_give isl_union_map *amp_remove_local_accesses(
     external = isl_union_map_subtract(external, local);
 
 #ifdef DEBUG_AMP_REMOVE_LOCAL_ACCESSES
-    printf("@DEBUG: \n       in the prog->scop, the live_in and live_out is on the below :\n");
+    fprintf(stderr, "@DEBUG: \n       in the prog->scop, the live_in and live_out is on the below :\n");
     isl_union_map_dump(ps->live_in);
     isl_union_map_dump(ps->live_out);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_REMOVE_LOCAL_ACCESSES
 
     if (read)
@@ -1944,19 +1944,19 @@ static __isl_give isl_union_map *amp_remove_local_accesses_group(
         return access;
 
 #ifdef DEBUG_AMP_REMOVE_LOCAL_ACCESSES_GROUP
-    printf("@DEBUG: \n       in start of amp_remove_local_accesses_group, the access is:\n");
+    fprintf(stderr, "@DEBUG: \n       in start of amp_remove_local_accesses_group, the access is:\n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif
     tagged = amp_group_tagged_access_relation(group);
     sched = isl_union_map_copy(prefix);
 
 #ifdef DEBUG_AMP_REMOVE_LOCAL_ACCESSES_GROUP
-    printf("@DEBUG: \n       the tagged is:\n");
+    fprintf(stderr, "@DEBUG: \n       the tagged is:\n");
     isl_union_map_dump(tagged);
-    printf("\n       the sched is:\n");
+    fprintf(stderr, "\n       the sched is:\n");
     isl_union_map_dump(sched);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif
 
     return amp_remove_local_accesses(kernel->prog, tagged, access, sched, read);
@@ -1996,44 +1996,44 @@ static __isl_give isl_union_map *anchored_non_local_accesses(
     isl_union_map *prefix;
 
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       anchored_non_local_accesses, the node is:\n");
+    fprintf(stderr, "@DEBUG: \n       anchored_non_local_accesses, the node is:\n");
     isl_schedule_node_dump(node);
-    printf("\n       the read's value is: %d \n\n", read);
+    fprintf(stderr, "\n       the read's value is: %d \n\n", read);
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     prefix = isl_schedule_node_get_prefix_schedule_relation(node);
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       the prefix from current node is:\n");
+    fprintf(stderr, "@DEBUG: \n       the prefix from current node is:\n");
     isl_union_map_dump(prefix);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     prefix = isl_union_map_preimage_domain_union_pw_multi_aff(prefix, isl_union_pw_multi_aff_copy(kernel->contraction));
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       after insert prefix(from current node) into the kernel->contraction,the result is:\n");
+    fprintf(stderr, "@DEBUG: \n       after insert prefix(from current node) into the kernel->contraction,the result is:\n");
     isl_union_map_dump(prefix);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     access = amp_array_ref_group_access_relation(group, read, !read);
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       all read (read = 1) and/or write (write = 1) access relations in the group, is:\n");
+    fprintf(stderr, "@DEBUG: \n       all read (read = 1) and/or write (write = 1) access relations in the group, is:\n");
     isl_union_map_dump(access);
-    printf("\n       the read's value is: %d \n\n", read);
+    fprintf(stderr, "\n       the read's value is: %d \n\n", read);
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     access = amp_remove_local_accesses_group(kernel, group, access, prefix, read);
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       after amp_remove_local_accesses_group, the access is:\n");
+    fprintf(stderr, "@DEBUG: \n       after amp_remove_local_accesses_group, the access is:\n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     access = isl_union_map_range_product(prefix, access);
 #ifdef DEBUG_ANCHORED_NON_LOCAL_ACCESSES
-    printf("@DEBUG: \n       after isl_union_map_range_product function, the returned access is:\n");
+    fprintf(stderr, "@DEBUG: \n       after isl_union_map_range_product function, the returned access is:\n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     return access;
@@ -2173,26 +2173,26 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 
     tile = amp_array_ref_group_tile(group);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_SHARED
-    printf("\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
+    fprintf(stderr, "\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
     if (tile)
         amp_array_tile_dump(tile);
-    printf("\n\n\n\n");
+    fprintf(stderr, "\n\n\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       at start of the amp add copies group function, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       at start of the amp add copies group function, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n       the read is :%d \n\n", read);
-    printf("\n\n");
+    fprintf(stderr, "\n       the read is :%d \n\n", read);
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     kernel_depth = isl_schedule_node_get_schedule_depth(node);
     node = amp_tree_move_down_to_depth(node, tile->depth, kernel->core);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       after amp tree move down to depth, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after amp tree move down to depth, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     access = anchored_non_local_accesses(kernel, group, node, read);
@@ -2206,9 +2206,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     }
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       after anchored_non_local_accesses, the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       after anchored_non_local_accesses, the access is: \n");
     isl_union_map_dump(access);
-    printf("\n       the empty number is :%d \n\n", empty);
+    fprintf(stderr, "\n       the empty number is :%d \n\n", empty);
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     group->array->global = 1;
@@ -2216,25 +2216,25 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 
     from_access = create_from_access(kernel->ctx, group, read);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       the from_access variable is: \n");
+    fprintf(stderr, "@DEBUG: \n       the from_access variable is: \n");
     isl_multi_aff_dump(from_access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     if (tile->tiling)
     {
         ma = isl_multi_aff_copy(tile->tiling);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       the ma(tile->tiling) is: \n");
+        fprintf(stderr, "@DEBUG: \n       the ma(tile->tiling) is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
         ma = isl_multi_aff_pullback_multi_aff(ma, isl_multi_aff_copy(from_access));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       plug in from_access in ma, the ma is: \n");
+        fprintf(stderr, "@DEBUG: \n       plug in from_access in ma, the ma is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
 
@@ -2242,18 +2242,18 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     {
         ma = isl_multi_aff_copy(from_access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       the ma(from_access) is: \n");
+        fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
 
     mpa = isl_multi_pw_aff_from_multi_aff(ma);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       the mpa is: \n");
+    fprintf(stderr, "@DEBUG: \n       the mpa is: \n");
     isl_multi_pw_aff_dump(mpa);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     mupa = isl_multi_union_pw_aff_from_multi_pw_aff(mpa);
@@ -2269,9 +2269,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 
     domain = isl_union_set_preimage_multi_aff(domain, isl_multi_aff_copy(from_access));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       the domain is: \n");
+    fprintf(stderr, "@DEBUG: \n       the domain is: \n");
     isl_union_set_dump(domain);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     // 基本上从下面开始就没办法修改了
@@ -2280,26 +2280,26 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     access = isl_union_map_coalesce(access);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       before the isl_schedule_node_from_extension(access), the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       before the isl_schedule_node_from_extension(access), the access is: \n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     graft = isl_schedule_node_from_extension(access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       after the isl_schedule_node_from_extension(access), the graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the isl_schedule_node_from_extension(access), the graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     graft = isl_schedule_node_child(graft, 0);
     graft = isl_schedule_node_insert_partial_schedule(graft, isl_multi_union_pw_aff_copy(mupa));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       after the isl_schedule_node_insert_partial_schedule(graft, mupa), the graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the isl_schedule_node_insert_partial_schedule(graft, mupa), the graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n       the mupa(isl_multi_union_pw_aff) is : \n");
+    fprintf(stderr, "\n       the mupa(isl_multi_union_pw_aff) is : \n");
     isl_multi_union_pw_aff_dump(mupa);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     if (kernel->options->unroll_copy_shared)
@@ -2309,15 +2309,15 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
         graft = isl_schedule_node_parent(graft);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       the final graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       the final graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       before insert the final graft,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       before insert the final graft,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     if (read)
@@ -2334,9 +2334,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     }
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    printf("@DEBUG: \n       after insert the final graft,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after insert the final graft,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     return node;
@@ -2370,25 +2370,25 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
 
     // tile = amp_array_ref_group_tile(group);
     // #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    //     printf("\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
+    //     fprintf(stderr, "\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
     //     amp_array_tile_dump(tile);
-    //     printf("\n\n\n\n");
+    //     fprintf(stderr, "\n\n\n\n");
     // #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       at start of the amp add copies group function, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       at start of the amp add copies group function, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n       the read is :%d \n\n", read);
-    printf("\n\n");
+    fprintf(stderr, "\n       the read is :%d \n\n", read);
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     kernel_depth = isl_schedule_node_get_schedule_depth(node);
     // node = amp_tree_move_down_to_depth(node, tile->depth, kernel->core);
 
     // #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-    //     printf("@DEBUG: \n       after amp tree move down to depth, the node is: \n");
+    //     fprintf(stderr, "@DEBUG: \n       after amp tree move down to depth, the node is: \n");
     //     isl_schedule_node_dump(node);
-    //     printf("\n\n");
+    //     fprintf(stderr, "\n\n");
     // #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
     access = anchored_non_local_accesses(kernel, group, node, read);
@@ -2402,9 +2402,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     }
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       after anchored_non_local_accesses, the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       after anchored_non_local_accesses, the access is: \n");
     isl_union_map_dump(access);
-    printf("\n       the empty number is :%d \n\n", empty);
+    fprintf(stderr, "\n       the empty number is :%d \n\n", empty);
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     group->array->global = 1;
@@ -2412,9 +2412,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
 
     from_access = create_from_access(kernel->ctx, group, read);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       the from_access variable is: \n");
+    fprintf(stderr, "@DEBUG: \n       the from_access variable is: \n");
     isl_multi_aff_dump(from_access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     space = isl_map_get_space(group->access);
@@ -2434,34 +2434,34 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     {
         ma = isl_multi_aff_copy(tiling);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       the ma(tiling) is: \n");
+        fprintf(stderr, "@DEBUG: \n       the ma(tiling) is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
         ma = isl_multi_aff_pullback_multi_aff(ma, isl_multi_aff_copy(from_access));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       plug in from_access in ma, the ma is: \n");
+        fprintf(stderr, "@DEBUG: \n       plug in from_access in ma, the ma is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
     else
     {
         ma = isl_multi_aff_copy(from_access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       the ma(from_access) is: \n");
+        fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
         isl_multi_aff_dump(ma);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
 
     mpa = isl_multi_pw_aff_from_multi_aff(ma);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       the mpa is: \n");
+    fprintf(stderr, "@DEBUG: \n       the mpa is: \n");
     isl_multi_pw_aff_dump(mpa);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     mupa = isl_multi_union_pw_aff_from_multi_pw_aff(mpa);
@@ -2477,9 +2477,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
 
     domain = isl_union_set_preimage_multi_aff(domain, isl_multi_aff_copy(from_access));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       the domain is: \n");
+    fprintf(stderr, "@DEBUG: \n       the domain is: \n");
     isl_union_set_dump(domain);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     // 基本上从下面开始就没办法修改了
@@ -2488,26 +2488,26 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     access = isl_union_map_coalesce(access);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       before the isl_schedule_node_from_extension(access), the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       before the isl_schedule_node_from_extension(access), the access is: \n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     graft = isl_schedule_node_from_extension(access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       after the isl_schedule_node_from_extension(access), the graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the isl_schedule_node_from_extension(access), the graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     graft = isl_schedule_node_child(graft, 0);
     graft = isl_schedule_node_insert_partial_schedule(graft, isl_multi_union_pw_aff_copy(mupa));
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       after the isl_schedule_node_insert_partial_schedule(graft, mupa), the graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the isl_schedule_node_insert_partial_schedule(graft, mupa), the graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n       the mupa(isl_multi_union_pw_aff) is : \n");
+    fprintf(stderr, "\n       the mupa(isl_multi_union_pw_aff) is : \n");
     isl_multi_union_pw_aff_dump(mupa);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     // if (kernel->options->unroll_copy_shared)
@@ -2517,15 +2517,15 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
         graft = isl_schedule_node_parent(graft);
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       the final graft is: \n");
+    fprintf(stderr, "@DEBUG: \n       the final graft is: \n");
     isl_schedule_node_dump(graft);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       before insert the final graft,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       before insert the final graft,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     if (read)
@@ -2542,9 +2542,9 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     }
 
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
-    printf("@DEBUG: \n       after insert the final graft,the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after insert the final graft,the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     return node;
@@ -2802,11 +2802,11 @@ static int access_is_coalesced(struct amp_group_data *data,
     int coalesced, empty;
 
 #ifdef DEBUG_ACCESS_IS_COALESCED
-    printf("@DEBUG: \n       in access_is_coalesced function, the data is: \n");
+    fprintf(stderr, "@DEBUG: \n       in access_is_coalesced function, the data is: \n");
     amp_group_data_dump(data);
-    printf("        the access is: \n");
+    fprintf(stderr, "        the access is: \n");
     isl_union_map_dump(access);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_ACCESS_IS_COALESCED
 
     access = isl_union_map_copy(access);
@@ -2870,11 +2870,11 @@ static __isl_give isl_union_map *localize_access(struct amp_group_data *data,
     space = isl_union_map_get_space(umap);
 
 #ifdef DEBUG_LOCALIZE_ACCESS
-    printf("@DEBUG: \n       in start 1 of localize_access function, the space is:\n");
+    fprintf(stderr, "@DEBUG: \n       in start 1 of localize_access function, the space is:\n");
     isl_space_dump(space);
-    printf("\n       the umap is:\n");
+    fprintf(stderr, "\n       the umap is:\n");
     isl_union_map_dump(umap);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_LOCALIZE_ACCESS
 
     n = data->kernel_depth;
@@ -2882,30 +2882,30 @@ static __isl_give isl_union_map *localize_access(struct amp_group_data *data,
     param = parametrization(space, n, 0, ids);
 
 #ifdef DEBUG_LOCALIZE_ACCESS
-    printf("@DEBUG: \n       in start 2 of localize_access function, the param is:\n");
+    fprintf(stderr, "@DEBUG: \n       in start 2 of localize_access function, the param is:\n");
     isl_set_dump(param);
-    printf("\n       the ids is:\n");
+    fprintf(stderr, "\n       the ids is:\n");
     isl_id_list_dump(ids);
-    printf("\n       the umap is:\n");
+    fprintf(stderr, "\n       the umap is:\n");
     isl_union_map_dump(umap);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_LOCALIZE_ACCESS
 
     isl_id_list_free(ids);
     umap = isl_union_map_intersect_range(umap, isl_union_set_from_set(param));
 
 #ifdef DEBUG_LOCALIZE_ACCESS
-    printf("@DEBUG: \n       in middle of localize_access function, the umap is:\n");
+    fprintf(stderr, "@DEBUG: \n       in middle of localize_access function, the umap is:\n");
     isl_union_map_dump(umap);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_LOCALIZE_ACCESS
 
     access = isl_union_map_intersect_domain(access, isl_union_map_domain(umap));
 
 #ifdef DEBUG_LOCALIZE_ACCESS
-    printf("@DEBUG: \n       in end of  localize_access function, the final access is:\n");
+    fprintf(stderr, "@DEBUG: \n       in end of  localize_access function, the final access is:\n");
     isl_union_map_dump(access);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_LOCALIZE_ACCESS
 
     return access;
@@ -3040,9 +3040,9 @@ static isl_bool can_tile(__isl_keep isl_map *access,
     isl_multi_val *size;
 
 #ifdef DEBUG_CAN_TILE
-    printf("@DEBUG: \n       the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       the access is: \n");
     isl_map_dump(access);
-    printf("       the tile is: \n");
+    fprintf(stderr, "       the tile is: \n");
     amp_array_tile_dump(tile);
 #endif // DEBUG_CAN_TILE
 
@@ -3053,16 +3053,16 @@ static isl_bool can_tile(__isl_keep isl_map *access,
 
     has_strides = detect_strides(tile, access);
 #ifdef DEBUG_CAN_TILE
-    printf("@DEBUG: \n       the access is: \n");
+    fprintf(stderr, "@DEBUG: \n       the access is: \n");
     isl_map_dump(access);
-    printf("       the has_strides is: %d \n\n", has_strides);
+    fprintf(stderr, "       the has_strides is: %d \n\n", has_strides);
 #endif // DEBUG_CAN_TILE
     if (has_strides < 0)
         return isl_bool_error;
 
     tile->depth = isl_map_dim(access, isl_dim_in);
 #ifdef DEBUG_CAN_TILE
-    printf("@DEBUG: \n       the tile->depth is: %d \n\n", tile->depth);
+    fprintf(stderr, "@DEBUG: \n       the tile->depth is: %d \n\n", tile->depth);
 #endif // DEBUG_CAN_TILE
 
     access = isl_map_copy(access);
@@ -3071,16 +3071,16 @@ static isl_bool can_tile(__isl_keep isl_map *access,
 
     box = isl_map_get_range_simple_fixed_box_hull(access);
 #ifdef DEBUG_CAN_TILE
-    printf("@DEBUG: \n       the box is: \n");
+    fprintf(stderr, "@DEBUG: \n       the box is: \n");
     isl_fixed_box_dump(box);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_CAN_TILE
 
     // isl_map_free(access);
 
     valid = isl_fixed_box_is_valid(box);
 #ifdef DEBUG_CAN_TILE
-    printf("@DEBUG: \n       the valid is: %d \n\n", valid);
+    fprintf(stderr, "@DEBUG: \n       the valid is: %d \n\n", valid);
 #endif // DEBUG_CAN_TILE
 
     if (valid >= 0 && valid)
@@ -3088,9 +3088,9 @@ static isl_bool can_tile(__isl_keep isl_map *access,
         offset = isl_fixed_box_get_offset(box);
         size = isl_fixed_box_get_size(box);
 #ifdef DEBUG_CAN_TILE
-        printf("@DEBUG: \n       in the can tile function, the offset is: \n");
+        fprintf(stderr, "@DEBUG: \n       in the can tile function, the offset is: \n");
         isl_multi_aff_dump(offset);
-        printf("@DEBUG: \n       in the can tile function, the  size  is: \n");
+        fprintf(stderr, "@DEBUG: \n       in the can tile function, the  size  is: \n");
         isl_multi_val_dump(size);
 #endif // DEBUG_CAN_TILE
         for (i = 0; i < tile->n; ++i)
@@ -3105,7 +3105,7 @@ static isl_bool can_tile(__isl_keep isl_map *access,
     {
         box = isl_map_get_range_lattice_tile(access);
 #ifdef DEBUG_CAN_TILE
-        printf("@DEBUG: \n       get_range_lattice_tile is: \n");
+        fprintf(stderr, "@DEBUG: \n       get_range_lattice_tile is: \n");
         isl_fixed_box_dump(box);
 #endif // DEBUG_CAN_TILE
 
@@ -3173,11 +3173,11 @@ static struct amp_array_tile *amp_array_tile_create(isl_ctx *ctx, int n_index)
         tile->bound[i].shift = NULL;
     }
 #ifdef DEBUG_AMP_ARRAY_TILE
-    printf("@DEBUG: \n       in amp_array_tile_create over, the tile information are: \n");
-    printf("          the tile->n is %d, the tile->depth is %d . \n\n", tile->n, tile->depth);
-    printf("          the tile->n is %d, the tile->depth is %d, the tile->tiling is:\n", tile->n, tile->depth);
+    fprintf(stderr, "@DEBUG: \n       in amp_array_tile_create over, the tile information are: \n");
+    fprintf(stderr, "          the tile->n is %d, the tile->depth is %d . \n\n", tile->n, tile->depth);
+    fprintf(stderr, "          the tile->n is %d, the tile->depth is %d, the tile->tiling is:\n", tile->n, tile->depth);
     isl_multi_aff_dump(tile->tiling);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ARRAY_TILE
     return tile;
 }
@@ -3452,15 +3452,15 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     no_reuse = isl_union_map_is_injective(local);
 
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
-    printf("@DEBUG: \n       in start of compute_group_bounds_core, the data is: \n");
+    fprintf(stderr, "@DEBUG: \n       in start of compute_group_bounds_core, the data is: \n");
     // amp_group_data_dump(data);
-    printf("        the group is:        ");
+    fprintf(stderr, "        the group is:        ");
     // amp_array_ref_group_dump(group);
-    printf("        the access(read and write) is:\n");
+    fprintf(stderr, "        the access(read and write) is:\n");
     isl_union_map_dump(access);
-    printf("        the local is:\n");
+    fprintf(stderr, "        the local is:\n");
     isl_union_map_dump(local);
-    printf("        the no_reuser value is: %d \n\n", no_reuse);
+    fprintf(stderr, "        the no_reuser value is: %d \n\n", no_reuse);
 #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
 
     if (no_reuse < 0)
@@ -3473,7 +3473,7 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         report_no_reuse_and_coalesced(kernel, access);
 
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
-    printf("@DEBUG: \n       the coalesced is: %d \n", coalesced);
+    fprintf(stderr, "@DEBUG: \n       the coalesced is: %d \n", coalesced);
 #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
     // if (!no_reuse || !coalesced)
     if (1)
@@ -3481,7 +3481,7 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         group->shared_tile = amp_array_tile_create(ctx, group->array->n_index);
         acc = shared_access(group, access, data);
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
-        printf("@TEMP_DEBUG: \n       the acc is : \n");
+        fprintf(stderr, "@TEMP_DEBUG: \n       the acc is : \n");
         isl_map_dump(acc);
 #endif
 
@@ -3495,7 +3495,7 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         //     struct amp_array_info *array = group->array;
         //     for (int i = 0; i < tile->n; i++)
         //     {
-        //         printf("\n\n  hbobiuhfeiopfh  \n\n");
+        //         fprintf(stderr, "\n\n  hbobiuhfeiopfh  \n\n");
         //         isl_multi_pw_aff_get_at(array->bound, i);
 
         //         isl_val *v = isl_multi_val_get_val(isl_set_get_plain_multi_val_if_fixed(array->declared_extent), i);
@@ -3503,22 +3503,22 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         //             tile->bound[i].size = v;
 
         //         isl_val_dump(tile->bound[i].size);
-        //         printf("\n\n 123456789987654321 \n\n");
+        //         fprintf(stderr, "\n\n 123456789987654321 \n\n");
         //     }
         // }
 
         // #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
         //         if (group->shared_tile && group) {
-        //             printf("@DEBUG: \n       the shared_tile create over!    the ok of can_tile function is: %d \n       the shared_tile is : \n", ok);
+        //             fprintf(stderr, "@DEBUG: \n       the shared_tile create over!    the ok of can_tile function is: %d \n       the shared_tile is : \n", ok);
         //             amp_array_tile_dump(group->shared_tile);
-        //             printf("\n       the group is : \n");
+        //             fprintf(stderr, "\n       the group is : \n");
         //             amp_array_ref_group_dump(group);
         //         } else {
-        //             printf("@ERROR: \n       the created shared_tile is NULL!!! \n");
-        //             printf("          the group->array->n_index is %d 、the acc is:\n", group->array->n_index);
+        //             fprintf(stderr, "@ERROR: \n       the created shared_tile is NULL!!! \n");
+        //             fprintf(stderr, "          the group->array->n_index is %d 、the acc is:\n", group->array->n_index);
         //             isl_map_dump(acc);
-        //             printf("          the ok of can_tile function is: %d\n", ok);
-        //             printf("\n\n");
+        //             fprintf(stderr, "          the ok of can_tile function is: %d\n", ok);
+        //             fprintf(stderr, "\n\n");
         //         }
         // #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
         isl_map_free(acc);
@@ -3968,12 +3968,12 @@ static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
     set_array_groups(local, n, groups);
 
 #ifdef DEBUG_AMP_GROUP_ARRAY_REFERENCES
-    printf("@DEBUG: \n       the group information in in end of amp_group_array_references is on the below:\n");
+    fprintf(stderr, "@DEBUG: \n       the group information in in end of amp_group_array_references is on the below:\n");
     for (i = 0; i < n; ++i)
     {
-        printf("           in amp_group_array_references structs, the index is %d.           the group is:\n", i);
+        fprintf(stderr, "           in amp_group_array_references structs, the index is %d.           the group is:\n", i);
         amp_array_ref_group_dump(groups[i]);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
     }
 #endif // DEBUG_AMP_GROUP_ARRAY_REFERENCES
 
@@ -4030,9 +4030,9 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
     struct amp_group_data data;
 
 #ifdef DEBUG_AMP_GROUP_REFERENCES
-    printf("@DEBUG: \n       in amp_group_references, node is :\n");
+    fprintf(stderr, "@DEBUG: \n       in amp_group_references, node is :\n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_GROUP_REFERENCES
 
     // check_can_be_private_live_ranges(kernel, node);
@@ -4048,9 +4048,9 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
     data.shared_sched = prefix_with_equalities(node);
 
 #ifdef DEBUG_AMP_GROUP_REFERENCES
-    printf("@DEBUG: \n       data.shared_sched is :\n");
+    fprintf(stderr, "@DEBUG: \n       data.shared_sched is :\n");
     isl_union_map_dump(data.shared_sched);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_GROUP_REFERENCES
     node = amp_tree_move_down_to_thread(node, kernel->core);
     node = isl_schedule_node_child(node, 0);
@@ -4125,7 +4125,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group(
     if (type == ppcg_access_shared)
     {
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        printf("@DEBUG: \n       the shared (amp_add_copies_group) : group->array is:\n");
+        fprintf(stderr, "@DEBUG: \n       the shared (amp_add_copies_group) : group->array is:\n");
         amp_array_info_dump(group->array);
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
@@ -4398,7 +4398,7 @@ static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
             size = amp_array_tile_size(group->shared_tile);
             size = isl_val_mul_ui(size, local->array->size);
 #ifdef DEBUG_CHECK_SHRED_MEMORY_BOUND
-            printf("\n the size and left is: \n");
+            fprintf(stderr, "\n the size and left is: \n");
             isl_val_dump(size);
             isl_val_dump(left);
 #endif // DEBUG_CHECK_SHRED_MEMORY_BOUND
@@ -4411,7 +4411,7 @@ static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
             isl_val_free(size);
 
             // 这里也尝试新增了注释
-            // printf("\n\n@WARN\n      check_shared_memory_bound meets errors!\n\n");
+            // fprintf(stderr, "\n\n@WARN\n      check_shared_memory_bound meets errors!\n\n");
             group->shared_tile = amp_array_tile_free(group->shared_tile);
         }
     }
@@ -4542,17 +4542,17 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     tile = amp_array_ref_group_tile(group);
     if (!tile)
     {
-        // printf("@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling        function, the tile of group is null !!! please notice! the group is:         \n");
-        printf("@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
+        // fprintf(stderr, "@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling        function, the tile of group is null !!! please notice! the group is:         \n");
+        fprintf(stderr, "@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
         amp_array_ref_group_dump(group);
         // amp_array_tile_dump(tile);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
         return;
     }
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       the start of amp_array_ref_group_compute_tiling, the tile is:\n");
+    fprintf(stderr, "@DEBUG: \n       the start of amp_array_ref_group_compute_tiling, the tile is:\n");
     amp_array_tile_dump(tile);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     space = isl_map_get_space(group->access);
@@ -4560,9 +4560,9 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     space = isl_space_add_dims(space, isl_dim_in, tile->depth);
     insert_array = isl_multi_aff_domain_map(isl_space_copy(space));
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       the insert_array is:\n");
+    fprintf(stderr, "@DEBUG: \n       the insert_array is:\n");
     isl_multi_aff_dump(insert_array);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     for (i = 0; i < tile->n; ++i)
@@ -4575,9 +4575,9 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
         tiling = isl_multi_aff_range_map(isl_space_copy(space));
 
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       when i(%d) and tile->n(%d), tiling is:\n", i, tile->n);
+    fprintf(stderr, "@DEBUG: \n       when i(%d) and tile->n(%d), tiling is:\n", i, tile->n);
     isl_multi_aff_dump(tiling);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     lb = isl_multi_aff_zero(space);
@@ -4589,17 +4589,17 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     lb = isl_multi_aff_pullback_multi_aff(lb, insert_array);
 
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       the final lb is: \n");
+    fprintf(stderr, "@DEBUG: \n       the final lb is: \n");
     isl_multi_aff_dump(lb);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
     if (lb)
         tiling = isl_multi_aff_sub(tiling, lb);
 
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       the tiling - lb is: \n");
+    fprintf(stderr, "@DEBUG: \n       the tiling - lb is: \n");
     isl_multi_aff_dump(tiling);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     p = isl_printer_to_str(isl_multi_aff_get_ctx(tiling));
@@ -4610,9 +4610,9 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     free(local_name);
 
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
-    printf("@DEBUG: \n       the end of amp_array_ref_group_compute_tiling, the tile->tiling is:\n");
+    fprintf(stderr, "@DEBUG: \n       the end of amp_array_ref_group_compute_tiling, the tile->tiling is:\n");
     isl_multi_aff_dump(tiling);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
     tile->tiling = tiling;
 }
@@ -4634,11 +4634,11 @@ static void compute_group_tilings(struct amp_ppcg_kernel *kernel)
             amp_array_ref_group_compute_tiling(array->groups[j]);
 
 #ifdef DEBUG_COMPUTE_GROUP_TILINGS
-            printf("@DEBUG: \n       in end of compute_group_tilings,the n_array is %d,         the n_group is %d! \n", kernel->n_array, array->n_group);
-            printf("       the kernel->array[%d]->groups[%d]->array->name is %s .\n", i, j, array->groups[j]->array->name);
-            // printf("       the kernel->array[%d]->groups[%d]->shared_tile is: \n", i, j);
+            fprintf(stderr, "@DEBUG: \n       in end of compute_group_tilings,the n_array is %d,         the n_group is %d! \n", kernel->n_array, array->n_group);
+            fprintf(stderr, "       the kernel->array[%d]->groups[%d]->array->name is %s .\n", i, j, array->groups[j]->array->name);
+            // fprintf(stderr, "       the kernel->array[%d]->groups[%d]->shared_tile is: \n", i, j);
             // amp_array_tile_dump(array->groups[j]->shared_tile);
-            // printf("\n\n");
+            // fprintf(stderr, "\n\n");
 #endif // DEBUG_COMPUTE_GROUP_TILINGS
         }
     }
@@ -4721,9 +4721,9 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
     // isl_schedule_node_dump(node);
     node = amp_tree_insert_shared_before_thread(node);
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       after insert shared mark, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after insert shared mark, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
     if (!node)
         return NULL;
@@ -4736,9 +4736,9 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
     domain = isl_schedule_node_get_domain(node);
     single_statement = isl_union_set_n_set(domain) == 1;
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       amp_create_kernel get the domain is: \n");
+    fprintf(stderr, "@DEBUG: \n       amp_create_kernel get the domain is: \n");
     isl_union_set_dump(domain);
-    printf("\n       the sigle_statementt is :%d \n\n", single_statement);
+    fprintf(stderr, "\n       the sigle_statementt is :%d \n\n", single_statement);
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     kernel->ctx = prog->ctx;
@@ -4766,9 +4766,9 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
     node = isl_schedule_node_insert_mark(node, isl_id_copy(id));
 
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       after insert amp_kernel, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after insert amp_kernel, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     // if (!single_statement)
@@ -4800,17 +4800,17 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
 
     node = amp_tree_move_up_to_kernel(node);
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       before the amp add copies function, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       before the amp add copies function, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     node = amp_add_copies(kernel, node);
 
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       after the amp add copies function and before delete thread and shared mark, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the amp add copies function and before delete thread and shared mark, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     // node = isl_schedule_node_parent(node);
@@ -4823,9 +4823,9 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
     node = amp_tree_move_up_to_kernel(node);
 
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       after delete thread and shared mark, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after delete thread and shared mark, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     if (create_amp_kernel_vars(kernel) < 0)
@@ -4836,9 +4836,9 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
         // node = isl_schedule_node_parent(node);
 
 #ifdef DEBUG_AMP_CREATE_KERNEL
-    printf("@DEBUG: \n       after the amp add create kernrl function, the node is: \n");
+    fprintf(stderr, "@DEBUG: \n       after the amp add create kernrl function, the node is: \n");
     isl_schedule_node_dump(node);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_CREATE_KERNEL
 
     return node;
@@ -4884,7 +4884,7 @@ error:
 void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset)
 {
     if (!amp_bset)
-        printf("\n@WARN:       amp_basic_set is NULL, maybe it is freed early! \n");
+        fprintf(stderr, "\n@WARN:       amp_basic_set is NULL, maybe it is freed early! \n");
     else
     {
         isl_basic_set_free(amp_bset->left);
@@ -4906,30 +4906,30 @@ __isl_give isl_aff *amp_get_partition_aff(__isl_keep isl_ctx *ctx, __isl_take is
 
     isl_aff *length = isl_aff_add(isl_aff_copy(y), isl_aff_copy(x));
 #ifdef DEBUG_AMP_GET_PARTITION_AFF
-    printf("@DEBUG: \n       区间长度是： \n");
+    fprintf(stderr, "@DEBUG: \n       区间长度是： \n");
     isl_aff_dump(length);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_GET_PARTITION_AFF
 
     isl_val *rate_val = isl_val_div_ui(isl_val_int_from_ui(ctx, rate), 100);
 #ifdef DEBUG_AMP_GET_PARTITION_AFF
-    printf("@DEBUG: \n       高精度所占比例是： \n");
+    fprintf(stderr, "@DEBUG: \n       高精度所占比例是： \n");
     isl_val_dump(rate_val);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_GET_PARTITION_AFF
 
     isl_aff *scale_down = isl_aff_scale_val(length, rate_val);
 #ifdef DEBUG_AMP_GET_PARTITION_AFF
-    printf("@DEBUG: \n       length * rate_val 后是： \n");
+    fprintf(stderr, "@DEBUG: \n       length * rate_val 后是： \n");
     isl_aff_dump(scale_down);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_AMP_GET_PARTITION_AFF
 
     //     isl_aff *floor = isl_aff_floor(scale_down);
     // #ifdef DEBUG_AMP_GET_PARTITION_AFF
-    //     printf("@DEBUG: \n       向下取整后的结果是： \n");
+    //     fprintf(stderr, "@DEBUG: \n       向下取整后的结果是： \n");
     //     isl_aff_dump(floor);
-    //     printf("\n");
+    //     fprintf(stderr, "\n");
     // #endif // DEBUG_AMP_GET_PARTITION_AFF
 
     isl_aff_free(x);
@@ -4968,14 +4968,14 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
 
     nvar = isl_basic_set_dim(bset, isl_dim_set);
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       current_dim is : %d\n", data->current_dim);
-    printf("       lower constraint and upper constraint is :\n");
+    fprintf(stderr, "@DEBUG: \n       current_dim is : %d\n", data->current_dim);
+    fprintf(stderr, "       lower constraint and upper constraint is :\n");
     isl_constraint_dump(lower);
     isl_constraint_dump(upper);
-    printf("\n");
-    printf("@DEBUG: \n       isl_basic_set(Remove the current dimension) is :\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "@DEBUG: \n       isl_basic_set(Remove the current dimension) is :\n");
     isl_basic_set_dump(bset);
-    printf("       n var of isl_basic_set is : %d \n\n", nvar);
+    fprintf(stderr, "       n var of isl_basic_set is : %d \n\n", nvar);
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
     if (nvar < 0)
         goto error;
@@ -4985,7 +4985,7 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
         if (isl_constraint_involves_dims(lower, isl_dim_set, i, 1) == 1)
         {
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
-            printf("@DEBUG: \n       The lower bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
+            fprintf(stderr, "@DEBUG: \n       The lower bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
             data->constraint_array[data->current_dim][i] = 1;
         }
@@ -4993,7 +4993,7 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
         if (isl_constraint_involves_dims(upper, isl_dim_set, i, 1) == 1)
         {
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
-            printf("@DEBUG: \n       The upper bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
+            fprintf(stderr, "@DEBUG: \n       The upper bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
             data->constraint_array[i][data->current_dim] = 1;
         }
@@ -5001,29 +5001,29 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
 
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
     // 打印出来数组。
-    printf("@DEBUG: \n       the loop index constraint array is:\n");
+    fprintf(stderr, "@DEBUG: \n       the loop index constraint array is:\n");
     for (int i = 0; i < data->dims; i++)
     {
         // 打印表头
         if (i == 0)
         {
-            printf("dim\\dim\t");
+            fprintf(stderr, "dim\\dim\t");
             for (int j = 0; j < data->dims; j++)
             {
-                printf("%d \t", j);
+                fprintf(stderr, "%d \t", j);
             }
-            printf("\n");
+            fprintf(stderr, "\n");
         }
         // 打印列号
-        printf("%d \t", i);
+        fprintf(stderr, "%d \t", i);
         // 打印内容
         for (int j = 0; j < data->dims; j++)
         {
-            printf("%d \t", data->constraint_array[i][j]);
+            fprintf(stderr, "%d \t", data->constraint_array[i][j]);
         }
-        printf("\n");
+        fprintf(stderr, "\n");
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
 
     isl_constraint_free(upper);
@@ -5083,12 +5083,12 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     isl_aff *aff_x, *aff_y;
 
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       split_on_bound_pair 接收到的一些参数有： \n");
+    fprintf(stderr, "@DEBUG: \n       split_on_bound_pair 接收到的一些参数有： \n");
     isl_basic_set_dump(bset);
-    printf("\n");
+    fprintf(stderr, "\n");
     isl_constraint_dump(upper);
     isl_constraint_dump(lower);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     // 获取当前维度的左边约束(循环下界)的仿射表达式：[] -> { S[] -> [(-x + t)]}.示例中当前维度对应的循环索引为t，x为下界值
@@ -5096,11 +5096,11 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     // 获取当前维度的右边约束(循环上界)的仿射表达式: [] -> { S[] -> [(y - t)]}.示例中当前维度对应的循环索引为t，y为上界值
     aff_y = isl_constraint_get_aff(upper);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       切分维度的左约束的仿射表达式是： \n");
+    fprintf(stderr, "@DEBUG: \n       切分维度的左约束的仿射表达式是： \n");
     isl_aff_dump(aff_x);
-    printf("\n       切分维度的右约束的仿射表达式是： \n");
+    fprintf(stderr, "\n       切分维度的右约束的仿射表达式是： \n");
     isl_aff_dump(aff_y);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     /**
@@ -5112,10 +5112,10 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     if (!amp_partition_val)
         goto error;
     assert(amp_partition_val);
-#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
+#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
+    fprintf(stderr, "@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
     isl_aff_dump(amp_partition_val);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     /**
@@ -5139,22 +5139,22 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     isl_constraint *c_left = isl_inequality_from_aff(aff_left);
     isl_constraint *c_right = isl_inequality_from_aff(aff_right);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       新的左分支的右约束是：  \n");
+    fprintf(stderr, "@DEBUG: \n       新的左分支的右约束是：  \n");
     isl_constraint_dump(c_left);
-    printf("\n      新的右分支的左约束是：  \n");
+    fprintf(stderr, "\n      新的右分支的左约束是：  \n");
     isl_constraint_dump(c_right);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     // 将新约束添加到左右的filter中
     amp_bset->left = isl_basic_set_add_constraint(amp_bset->left, c_left);
     amp_bset->right = isl_basic_set_add_constraint(amp_bset->right, c_right);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    printf("@DEBUG: \n       左filter是:  \n");
+    fprintf(stderr, "@DEBUG: \n       左filter是:  \n");
     isl_basic_set_dump(amp_bset->left);
-    printf("\n      右filter是:  \n");
+    fprintf(stderr, "\n      右filter是:  \n");
     isl_basic_set_dump(amp_bset->right);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
     isl_constraint_free(upper);
     isl_constraint_free(lower);
@@ -5221,55 +5221,54 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
         check_date->current_dim = i;
         if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, i, &check_loop_index_constraint_on_bound_pair, check_date) < 0)
         {
-            printf("\n\033[31m@ERROR:\n       check_loop_index_constraint_on_bound_pair meets some ERRORS!!!  \033[0m\n\n");
+            fprintf(stderr, "\n\033[31m@ERROR:\n       check_loop_index_constraint_on_bound_pair meets some ERRORS!!!  \033[0m\n\n");
         }
     }
 
 #ifdef DEBUG_PARTITION_BY_RATE
     // 打印出来数组。
-    printf("@DEBUG: \n       the loop index constraint array is:\n");
+    fprintf(stderr, "@DEBUG: \n       the loop index constraint array is:\n");
     for (int i = 0; i < bset_dims; i++)
     {
         // 打印表头
         if (i == 0)
         {
-            printf("dim\\dim\t");
+            fprintf(stderr, "dim\\dim\t");
             for (int j = 0; j < bset_dims; j++)
             {
-                printf("%d \t", j);
+                fprintf(stderr, "%d \t", j);
             }
-            printf("\n");
+            fprintf(stderr, "\n");
         }
         // 打印列号
-        printf("%d \t", i);
+        fprintf(stderr, "%d \t", i);
         // 打印内容
         for (int j = 0; j < bset_dims; j++)
         {
-            printf("%d \t", loop_index_constraint_relation_array[i][j]);
+            fprintf(stderr, "%d \t", loop_index_constraint_relation_array[i][j]);
         }
-        printf("\n");
+        fprintf(stderr, "\n");
     }
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_PARTITION_BY_RATE
 
     // 获取应该划分的维度
     isl_size split_dim = get_split_dim_by_loop_index_constraint_relation_array(check_date);
     assert(split_dim != -1);
 #ifdef DEBUG_PARTITION_BY_RATE
-    printf("@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
+    fprintf(stderr, "@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
 #endif // DEBUG_PARTITION_BY_RATE
 
     // 划分split_dim对应的维度
     amp_bset->rate = rate;
     if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, split_dim, &split_on_bound_pair, amp_bset) < 0)
-        printf("\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
-
+        fprintf(stderr, "\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
 #ifdef DEBUG_PARTITION_BY_RATE
-    printf("@DEBUG: \n       对当前isl_basic_set进行迭代空间划分后,左迭代空间是:  \n");
+    fprintf(stderr, "@DEBUG: \n       对当前isl_basic_set进行迭代空间划分后,左迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->left);
-    printf("\n      对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
+    fprintf(stderr, "\n      对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->right);
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif // DEBUG_PARTITION_BY_RATE
 
     isl_basic_set_free(basic_set);
@@ -5331,7 +5330,7 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
         // 如果左右两个子迭代空间为NULL情况不一致，说明存在错误。
         else
         {
-            printf("\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
+            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
             goto error;
         }
     }
@@ -5362,7 +5361,7 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
             }
             else
             {
-                printf("\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
+                fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
                 goto error;
             }
             amp_basic_set_free(amp_bset);
@@ -5409,7 +5408,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         // 遍历所有的语句，对其迭代空间进行划分.
         if (isl_union_set_foreach_set(domain, repartition_set, amp_domain) < 0)
         {
-            printf("\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
+            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
         assert(amp_domain);
@@ -5424,7 +5423,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         node = isl_schedule_node_insert_sequence(node, filters);
         if (!node)
         {
-            printf("\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
+            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
         node = isl_schedule_node_child(node, 1);
@@ -5436,9 +5435,9 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         // 返回到插入前的位置（filter的位置）
         // node = isl_schedule_node_parent(node);
 #ifdef DEBUG_AMP_RESCHEDULE
-        printf("@DEBUG: \n       after insert mark('thread'), the node is : \n");
+        fprintf(stderr, "@DEBUG: \n       after insert mark('thread'), the node is : \n");
         isl_schedule_node_dump(node);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif
 
         // 插入mark(amp_lower)结点
@@ -5446,9 +5445,9 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         // 返回到插入前的位置（filter的位置）
         node = isl_schedule_node_parent(node);
 #ifdef DEBUG_AMP_RESCHEDULE
-        printf("@DEBUG: \n       after insert mark('amp_lower'), the node is : \n");
+        fprintf(stderr, "@DEBUG: \n       after insert mark('amp_lower'), the node is : \n");
         isl_schedule_node_dump(node);
-        printf("\n\n");
+        fprintf(stderr, "\n\n");
 #endif
         // 如果要增加多次切分，这里需要更新node和domain,但是更建议把这里做成一个函数，或许会更好一点，因为按理说division_number=2,最终的结果应该是4个filter.这个目前先不考虑，后续再设计实现吧
     }
@@ -5457,7 +5456,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
     node = amp_create_kernel(prog, node);
     if (!node)
     {
-        printf("\n\033[31m@ERROR:\n       There are some errors because the node (the amp_create_kernel function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
+        fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the node (the amp_create_kernel function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
         goto error;
     }
     assert(node);
@@ -5465,9 +5464,9 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
     // 获取新的带有amp_kernel的调度
     schedule = isl_schedule_node_get_schedule(node);
 #ifdef DEBUG_AMP_RESCHEDULE
-    printf("@DEBUG: \n       automatic_mixed_precision_reschedule generate's schedule  is : \n");
+    fprintf(stderr, "@DEBUG: \n       automatic_mixed_precision_reschedule generate's schedule  is : \n");
     isl_schedule_dump(schedule);
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 #endif
 
     // 释放内存
@@ -5504,14 +5503,14 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
     // 如果比例不合法(小于0或者大于99),则不进行混合精度,将原始调度返回.
     if (rate < 0 || rate > 99)
     {
-        printf("\n\033[31m@WARNING:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
+        fprintf(stderr, "\n\033[31m@WARNING:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
         return sched;
     }
 
     schedule = amp_reschedule(ctx, prog, sched, rate);
     if (!schedule)
     {
-        printf("\n\033[31m@ERROR:\n       There are some errors because the schedule (the amp_reschedule function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
+        fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the schedule (the amp_reschedule function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
         goto error;
     }
     assert(schedule);
