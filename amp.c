@@ -4845,16 +4845,23 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
 }
 
 /**
- * @brief   为了更好的划分amp，为划分后的filter设计的结构体.
- * @note    left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
+ * @brief   为了更好的划分amp划分后的filter设计的结构体.
+ *          left代表划分后上面(对应树中的左分支)的filter(isl_basic_set),lower代表下面(对应树中的右分支)的filter.
+ *          flag代表对应的filter是否存在,true即为存在.
+ * @note
+ *      注意：left非空并不是就一定存在该迭代空间，其存在与否是通过其flag控制的。
+ *      当rate = 0,或者取整后的partition_val = 0时，left_flag应该为false
+ *      当rate = 100,right_flag应该为false.(目前这种情况直接返回原始调度了,不会进行迭代空间划分.所以不会出现这种情况)
  */
 struct amp_basic_set
 {
     // the left basic set and its flag
     isl_basic_set *left;
+    isl_bool left_flag;
 
     // the right basic set and its flag
     isl_basic_set *right;
+    isl_bool right_flag;
 
     // split need data
     isl_ctx *ctx;
@@ -4871,6 +4878,8 @@ __isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx)
     struct amp_basic_set *amp_bset = isl_calloc_type(ctx, struct amp_basic_set);
     amp_bset->left = NULL;
     amp_bset->right = NULL;
+    amp_bset->left_flag = isl_bool_error;
+    amp_bset->right_flag = isl_bool_error;
 
     amp_bset->ctx = ctx;
     amp_bset->rate = 50;
@@ -4925,17 +4934,17 @@ __isl_give isl_aff *amp_get_partition_aff(__isl_keep isl_ctx *ctx, __isl_take is
     fprintf(stderr, "\n");
 #endif // DEBUG_AMP_GET_PARTITION_AFF
 
-    //     isl_aff *floor = isl_aff_floor(scale_down);
-    // #ifdef DEBUG_AMP_GET_PARTITION_AFF
-    //     fprintf(stderr, "@DEBUG: \n       向下取整后的结果是： \n");
-    //     isl_aff_dump(floor);
-    //     fprintf(stderr, "\n");
-    // #endif // DEBUG_AMP_GET_PARTITION_AFF
+    isl_aff *floor = isl_aff_floor(scale_down);
+#ifdef DEBUG_AMP_GET_PARTITION_AFF
+    fprintf(stderr, "@DEBUG: \n       向下取整后的结果是： \n");
+    isl_aff_dump(floor);
+    fprintf(stderr, "\n");
+#endif // DEBUG_AMP_GET_PARTITION_AFF
 
     isl_aff_free(x);
     isl_aff_free(y);
 
-    return scale_down;
+    return floor;
 error:
     isl_aff_free(x);
     isl_aff_free(y);
@@ -5112,50 +5121,81 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     if (!amp_partition_val)
         goto error;
     assert(amp_partition_val);
-#ifndef DEBUG_SPLIT_ON_BOUND_PAIR
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
     fprintf(stderr, "@DEBUG: \n       amp_get_partition_aff 返回的值是： \n");
     isl_aff_dump(amp_partition_val);
     fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
-    /**
-     * @brief 先获取新的左右分支需要用到的仿射表达式.
-     *
-     * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
-     *       所以先求新y,然后就顺理成章得到了新x.
-     */
-    isl_aff *aff_left = isl_aff_copy(aff_x);
-    isl_aff *aff_right = isl_aff_copy(aff_y);
+    // 如果amp_partition_val为0，那么左分支（第一个迭代空间）应该为空
+    if (isl_aff_plain_is_zero(amp_partition_val))
+    {
+        amp_bset->left_flag = isl_bool_false;
+        amp_bset->right_flag = isl_bool_true;
+    }
+    // 如果amp_partition_val不为0，那么左分支和左分支两个迭代空间均为非空
+    else
+    {
+        amp_bset->left_flag = isl_bool_true;
+        amp_bset->right_flag = isl_bool_true;
+        /**
+         * @brief 先获取新的左右分支需要用到的仿射表达式.
+         *
+         * @note 显然，左分支需要求新y,右分支需要求新x.但是两者的边界其实只差一个1.
+         *       所以先求新y,然后就顺理成章得到了新x.
+         */
+        isl_aff *aff_left = isl_aff_copy(aff_x);
+        isl_aff *aff_right = isl_aff_copy(aff_x);
+        isl_aff_free(aff_x);
+        isl_aff_free(aff_y);
 
-    // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
-    aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
-    // 获取新的右分支的新仿射表达式（左约束,新x）。为了方便，直接对aff_left取反即可
-    aff_right = isl_aff_neg(isl_aff_copy(aff_left));
-    isl_aff_free(amp_partition_val);
-    isl_aff_free(aff_x);
-    isl_aff_free(aff_y);
+        // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
+        aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
 
-    // 将左右的新的仿射表达式转换成约束
-    isl_constraint *c_left = isl_inequality_from_aff(aff_left);
-    isl_constraint *c_right = isl_inequality_from_aff(aff_right);
+        /**
+         * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val -1 + t )]}
+         *            这里是先用 (-x + t) - amp_partition_val,然后再拿结果减 1 求得的
+         * @note  注意分成了两步，第一步是获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，第二步只需减1即可
+         * @note  也即：切线或者切平面上的点,只会出现在左分支上(第一个迭代空间上),不会出现在右分支上.
+         */
+        // 先获取新的右分支的仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
+        aff_right = isl_aff_sub(aff_right, isl_aff_copy(amp_partition_val));
+        isl_aff_free(amp_partition_val);
+        // 初始化来获取与aff_right同空间的常数为1的仿射表达式
+        isl_space *space = isl_aff_get_domain_space(aff_right);
+        isl_aff *one = isl_aff_val_on_domain_space(space, isl_val_int_from_si(amp_bset->ctx, 1));
+        // 减1 得到最终的仿射表达式
+        aff_right = isl_aff_sub(aff_right, one);
+
+        /**
+         * @brief   为了方便，也可以直接对aff_left取反(但该方法在长度为奇数时会出现重复),暂时弃用.
+         * @note    也即：切线或者切平面上的点会同时出现在左右两个迭代空间造成重复.
+         */
+        // aff_right = isl_aff_neg(isl_aff_copy(aff_left));
+
+        // 将左右的新的仿射表达式转换成约束
+        isl_constraint *c_left = isl_inequality_from_aff(aff_left);
+        isl_constraint *c_right = isl_inequality_from_aff(aff_right);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    fprintf(stderr, "@DEBUG: \n       新的左分支的右约束是：  \n");
-    isl_constraint_dump(c_left);
-    fprintf(stderr, "\n      新的右分支的左约束是：  \n");
-    isl_constraint_dump(c_right);
-    fprintf(stderr, "\n");
+        fprintf(stderr, "@DEBUG: \n       新的左分支的右约束是：  \n");
+        isl_constraint_dump(c_left);
+        fprintf(stderr, "\n      新的右分支的左约束是：  \n");
+        isl_constraint_dump(c_right);
+        fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
-    // 将新约束添加到左右的filter中
-    amp_bset->left = isl_basic_set_add_constraint(amp_bset->left, c_left);
-    amp_bset->right = isl_basic_set_add_constraint(amp_bset->right, c_right);
+        // 将新约束添加到左右的filter中
+        amp_bset->left = isl_basic_set_add_constraint(amp_bset->left, c_left);
+        amp_bset->right = isl_basic_set_add_constraint(amp_bset->right, c_right);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-    fprintf(stderr, "@DEBUG: \n       左filter是:  \n");
-    isl_basic_set_dump(amp_bset->left);
-    fprintf(stderr, "\n      右filter是:  \n");
-    isl_basic_set_dump(amp_bset->right);
-    fprintf(stderr, "\n");
+        fprintf(stderr, "@DEBUG: \n       左filter是:  \n");
+        isl_basic_set_dump(amp_bset->left);
+        fprintf(stderr, "\n      右filter是:  \n");
+        isl_basic_set_dump(amp_bset->right);
+        fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
+    }
+
     isl_constraint_free(upper);
     isl_constraint_free(lower);
     isl_basic_set_free(bset);
@@ -5266,7 +5306,7 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
 #ifdef DEBUG_PARTITION_BY_RATE
     fprintf(stderr, "@DEBUG: \n       对当前isl_basic_set进行迭代空间划分后,左迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->left);
-    fprintf(stderr, "\n      对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
+    fprintf(stderr, "       对当前isl_basic_set进行迭代空间划分后,右迭代空间是:  \n");
     isl_basic_set_dump(amp_bset->right);
     fprintf(stderr, "\n");
 #endif // DEBUG_PARTITION_BY_RATE
@@ -5314,24 +5354,20 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
     // 如果dims为0，说明语句就是简单的赋值，且不在循环体中，则将其同时放到左右两个子迭代空间中
     else if (dims == 0)
     {
-        // TODO: 应该是amp_domain的left和right的初始化有问题，才需要先转换。
-        // 如果左右两个子迭代空间均为NULL,说明还未放入,直接转换即可
-        if (!amp_domain->left && !amp_domain->right)
+        // 如果右分支的迭代空间为NULL,说明还未放入,直接转换即可
+        if (!amp_domain->right)
         {
-            amp_domain->left = isl_union_set_from_set(set);
+            // 如果左分支（第一个迭代空间）存在.
+            if (amp_domain->rate > 0)
+                amp_domain->left = isl_union_set_from_set(set);
             amp_domain->right = isl_union_set_from_set(set);
         }
-        // 如果左右两个子迭代空间均非NULL,添加进去即可
-        else if (amp_domain->left && amp_domain->right)
-        {
-            amp_domain->left = isl_union_set_add_set(amp_domain->left, set);
-            amp_domain->right = isl_union_set_add_set(amp_domain->right, set);
-        }
-        // 如果左右两个子迭代空间为NULL情况不一致，说明存在错误。
         else
         {
-            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
-            goto error;
+            // 如果左分支（第一个迭代空间）存在.
+            if (amp_domain->rate > 0)
+                amp_domain->left = isl_union_set_add_set(amp_domain->left, set);
+            amp_domain->right = isl_union_set_add_set(amp_domain->right, set);
         }
     }
     // 如果dims大于0，说明语句循环体中，则将其切分后放到左右两个子迭代空间中
@@ -5349,20 +5385,23 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
             // 根据rate将当前的一个basic_set划分成left和right两个，也即将该语句的迭代空间分成2个
             struct amp_basic_set *amp_bset = partition_by_rate(amp_domain->ctx, bset, amp_domain->rate);
             /** 根据情况进行判断，添加该语句的迭代空间到amp_domain中. */
-            if (!amp_domain->left && !amp_domain->right)
+            if (!amp_domain->right)
             {
-                amp_domain->left = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
-                amp_domain->right = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
-            }
-            else if (amp_domain->left && amp_domain->right)
-            {
-                amp_domain->left = isl_union_set_add_set(amp_domain->left, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
-                amp_domain->right = isl_union_set_add_set(amp_domain->right, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
+                // 如果左分支（第一个迭代空间）存在.
+                if (amp_bset->left_flag)
+                    amp_domain->left = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
+                // 如果右分支（第二个迭代空间）存在，目前一定是存在的.
+                if (amp_bset->right_flag)
+                    amp_domain->right = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
             }
             else
             {
-                fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the left and right pointer of amp_domain inconsistent!!! \033[0m\n\n");
-                goto error;
+                // 如果左分支（第一个迭代空间）存在.
+                if (amp_bset->left_flag)
+                    amp_domain->left = isl_union_set_add_set(amp_domain->left, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
+                // 如果右分支（第二个迭代空间）存在，目前一定是存在的.
+                if (amp_bset->right_flag)
+                    amp_domain->right = isl_union_set_add_set(amp_domain->right, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
             }
             amp_basic_set_free(amp_bset);
         }
@@ -5408,14 +5447,16 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         // 遍历所有的语句，对其迭代空间进行划分.
         if (isl_union_set_foreach_set(domain, repartition_set, amp_domain) < 0)
         {
-            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
+            fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because isl_union_set_foreach_set() < 0 !!! \033[0m\n\n");
             goto error;
         }
         assert(amp_domain);
 
         // 将两个迭代空间拼接成filters(isl_union_set_list)
         isl_union_set_list *filters = isl_union_set_list_alloc(ctx, 0);
-        filters = isl_union_set_list_add(filters, amp_domain->left);
+        // 如果存在第一个迭代空间，就加入
+        if (amp_domain->left)
+            filters = isl_union_set_list_add(filters, amp_domain->left);
         filters = isl_union_set_list_add(filters, amp_domain->right);
 
         // 将filters插入到根节点
@@ -5426,7 +5467,12 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
             fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
-        node = isl_schedule_node_child(node, 1);
+        // 如果存在第一个迭代空间
+        if (amp_domain->left)
+            node = isl_schedule_node_child(node, 1);
+        // 如果不存在第一个迭代空间
+        else
+            node = isl_schedule_node_child(node, 0);
         node = isl_schedule_node_child(node, 0);
 
         // 插入mark(thread)结点
