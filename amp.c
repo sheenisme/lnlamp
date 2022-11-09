@@ -4866,6 +4866,7 @@ struct amp_basic_set
     // split need data
     isl_ctx *ctx;
     int rate;
+    isl_size split_dim;
 };
 
 /**
@@ -4883,6 +4884,7 @@ __isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx)
 
     amp_bset->ctx = ctx;
     amp_bset->rate = 50;
+    amp_bset->split_dim = -1;
 
     return amp_bset;
 
@@ -5145,33 +5147,68 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
          *       所以先求新y,然后就顺理成章得到了新x.
          */
         isl_aff *aff_left = isl_aff_copy(aff_x);
-        isl_aff *aff_right = isl_aff_copy(aff_x);
+        isl_aff *aff_right = isl_aff_copy(aff_y);
         isl_aff_free(aff_x);
         isl_aff_free(aff_y);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+        fprintf(stderr, "@DEBUG: \n       切分后，拼接前的左约束的仿射表达式是： \n");
+        isl_aff_dump(aff_left);
+        fprintf(stderr, "       切分后，拼接前的右约束的仿射表达式是： \n");
+        isl_aff_dump(aff_right);
+        fprintf(stderr, "       amp_partition_val 是： \n");
+        isl_aff_dump(amp_partition_val);
+        fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
         // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
         aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
-
         /**
-         * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val -1 + t )]}
-         *            这里是先用 (-x + t) - amp_partition_val,然后再拿结果减 1 求得的
+         * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val - 1 + t )]}
+         *            这里是先用 (-x + t) - amp_partition_val, 然后再判断两个空间是否有重合的元素(取反策略肯定必有)。如果有重合元素，再减 1 求得最终结果。
          * @note  注意分成了两步，第一步是获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，第二步只需减1即可
          * @note  也即：切线或者切平面上的点,只会出现在左分支上(第一个迭代空间上),不会出现在右分支上.
          */
-        // 先获取新的右分支的仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
-        aff_right = isl_aff_sub(aff_right, isl_aff_copy(amp_partition_val));
-        isl_aff_free(amp_partition_val);
-        // 初始化来获取与aff_right同空间的常数为1的仿射表达式
-        isl_space *space = isl_aff_get_domain_space(aff_right);
-        isl_aff *one = isl_aff_val_on_domain_space(space, isl_val_int_from_si(amp_bset->ctx, 1));
-        // 减1 得到最终的仿射表达式
-        aff_right = isl_aff_sub(aff_right, one);
-
+        // // 先获取新的右分支的仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
+        // // aff_right = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_right);
         /**
-         * @brief   为了方便，也可以直接对aff_left取反(但该方法在长度为奇数时会出现重复),暂时弃用.
+         * @brief   为了方便，也可以直接对aff_left取反(但该方法会出现重复).
          * @note    也即：切线或者切平面上的点会同时出现在左右两个迭代空间造成重复.
          */
-        // aff_right = isl_aff_neg(isl_aff_copy(aff_left));
+        aff_right = isl_aff_neg(isl_aff_copy(aff_left));
+        isl_aff_free(amp_partition_val);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+        fprintf(stderr, "@DEBUG: \n       拼接前,去除切平面或者切线上的点前.左约束的仿射表达式是： \n");
+        isl_aff_dump(aff_left);
+        fprintf(stderr, "       拼接前,去除切平面或者切线上的点前.右约束的仿射表达式是： \n");
+        isl_aff_dump(aff_right);
+        fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+       // 如果左右分支包含了相同的元素，则右分支去掉这个元素(取反策略必有)
+        isl_set *common_set = isl_aff_eq_set(isl_aff_copy(aff_left), isl_aff_copy(aff_right));
+        if (!isl_set_is_empty(common_set))
+        {
+            // 初始化来获取与aff_right同空间的常数为1的仿射表达式
+            isl_space *space = isl_aff_get_domain_space(aff_right);
+            isl_val *coeff_val = isl_constraint_get_coefficient_val(lower, isl_dim_set, amp_bset->split_dim);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+            fprintf(stderr, "@DEBUG: \n       去除切平面上的点时, 公共的集合和减去的值依次是： \n");
+            isl_set_dump(common_set);
+            isl_val_dump(coeff_val);
+            fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+            isl_aff *one = isl_aff_val_on_domain_space(space, coeff_val);
+            // 减1 得到最终的仿射表达式
+            aff_right = isl_aff_sub(aff_right, one);
+        }
+        isl_set_free(common_set);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+        fprintf(stderr, "@DEBUG: \n       切分的维度是： %d .\n", amp_bset->split_dim);
+        fprintf(stderr, "       切分维度后新的左约束的仿射表达式是： \n");
+        isl_aff_dump(aff_left);
+        fprintf(stderr, "       切分维度后新的右约束的仿射表达式是： \n");
+        isl_aff_dump(aff_right);
+        fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
         // 将左右的新的仿射表达式转换成约束
         isl_constraint *c_left = isl_inequality_from_aff(aff_left);
@@ -5299,8 +5336,10 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
     fprintf(stderr, "@DEBUG: \n       the split dim should be %d .\n\n", split_dim);
 #endif // DEBUG_PARTITION_BY_RATE
 
-    // 划分split_dim对应的维度
+    // 保存split时需要用到的信息
     amp_bset->rate = rate;
+    amp_bset->split_dim = split_dim;
+    // 划分split_dim对应的维度
     if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, split_dim, &split_on_bound_pair, amp_bset) < 0)
         fprintf(stderr, "\n\033[31m@ERROR:\n       split_on_bound_pair function meets some ERRORS!!!  \033[0m\n\n");
 #ifdef DEBUG_PARTITION_BY_RATE
