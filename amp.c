@@ -5114,6 +5114,40 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
+    // 获取左右边约束对应维度的系数，如果不一致，则缩放使其一致。
+    isl_val *upper_val = isl_constraint_get_coefficient_val(upper, isl_dim_set, amp_bset->split_dim);
+    // 对upper_val取反，使得系数的符号一致(均为+)
+    upper_val = isl_val_neg(upper_val);
+    isl_val *lower_val = isl_constraint_get_coefficient_val(lower, isl_dim_set, amp_bset->split_dim);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    fprintf(stderr, "@DEBUG: \n       计算amp划分值前,upper和lower在划分维度(%d)的系数是： \n", amp_bset->split_dim);
+    isl_val_dump(upper_val);
+    isl_val_dump(lower_val);
+    fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+    if (!isl_val_eq(upper_val, lower_val))
+    {
+        isl_val *scale_val = isl_val_div(lower_val, upper_val);
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+        fprintf(stderr, "@DEBUG: \n       统一系数时的缩放因子是： \n");
+        isl_val_dump(scale_val);
+        fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+        aff_y = isl_aff_scale_val(aff_y, scale_val);
+    }
+    else
+    {
+        isl_val_free(upper_val);
+        isl_val_free(lower_val);
+    }
+#ifdef DEBUG_SPLIT_ON_BOUND_PAIR
+    fprintf(stderr, "@DEBUG: \n       统一系数后, 切分维度的左约束的仿射表达式是： \n");
+    isl_aff_dump(aff_x);
+    fprintf(stderr, "\n       统一系数后, 切分维度的右约束的仿射表达式是： \n");
+    isl_aff_dump(aff_y);
+    fprintf(stderr, "\n");
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+
     /**
      * @brief 获取amp_partition_val(根据rate划分出来高精度计算所需的长度值，也叫amp划分值)
      *           即求floor( (y-x) * rate/100 ),数学上则是[ (y-x) * rate/100 ]
