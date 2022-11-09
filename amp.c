@@ -5151,35 +5151,35 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
         isl_aff_free(aff_x);
         isl_aff_free(aff_y);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-        fprintf(stderr, "@DEBUG: \n       切分后，拼接前的左约束的仿射表达式是： \n");
+        fprintf(stderr, "@DEBUG: \n       得到amp划分值后,拼接前的左分支的仿射表达式是： \n");
         isl_aff_dump(aff_left);
-        fprintf(stderr, "       切分后，拼接前的右约束的仿射表达式是： \n");
+        fprintf(stderr, "       得到amp划分值后,拼接前的右分支的仿射表达式是： \n");
         isl_aff_dump(aff_right);
         fprintf(stderr, "       amp_partition_val 是： \n");
         isl_aff_dump(amp_partition_val);
         fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
-        // 获取新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
+        // 获取(拼接)新的左分支的新仿射表达式（右约束，新y）：[] -> { S[] -> [(  amp_partition_val + x - t )]}
         aff_left = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_left);
         /**
-         * @brief 获取新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val - 1 + t )]}
+         * @brief 获取(拼接)新的右分支的新仿射表达式（左约束,新x）：[] -> { S[] -> [( -x - amp_partition_val - 1 + t )]}
          *            这里是先用 (-x + t) - amp_partition_val, 然后再判断两个空间是否有重合的元素(取反策略肯定必有)。如果有重合元素，再减 1 求得最终结果。
-         * @note  注意分成了两步，第一步是获得了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，第二步只需减1即可
+         * @note  注意分成了两步，第一步是获得(拼接)了aff_right = [] -> { S[] -> [( -amp_partition_val - x + t )]}，第二步只需减1即可(去除切平面或者切线上的点)
          * @note  也即：切线或者切平面上的点,只会出现在左分支上(第一个迭代空间上),不会出现在右分支上.
          */
         // // 先获取新的右分支的仿射表达式（左约束,新x）：[] -> { S[] -> [( -amp_partition_val - x + t )]}
         // // aff_right = isl_aff_sub(isl_aff_copy(amp_partition_val), aff_right);
         /**
          * @brief   为了方便，也可以直接对aff_left取反(但该方法会出现重复).
-         * @note    也即：切线或者切平面上的点会同时出现在左右两个迭代空间造成重复.
+         * @note    也即：切线或者切平面上的点会同时出现在左右两个迭代空间造成重复,所以还需要第二步来去除(第二个迭代空间中所包含的)切平面或者切线上的点.
          */
         aff_right = isl_aff_neg(isl_aff_copy(aff_left));
         isl_aff_free(amp_partition_val);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
-        fprintf(stderr, "@DEBUG: \n       拼接前,去除切平面或者切线上的点前.左约束的仿射表达式是： \n");
+        fprintf(stderr, "@DEBUG: \n       拼接后,去除切平面或者切线上的点前.左分支的仿射表达式是： \n");
         isl_aff_dump(aff_left);
-        fprintf(stderr, "       拼接前,去除切平面或者切线上的点前.右约束的仿射表达式是： \n");
+        fprintf(stderr, "       拼接后,去除切平面或者切线上的点前.右分支的仿射表达式是： \n");
         isl_aff_dump(aff_right);
         fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
@@ -5203,9 +5203,9 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
         isl_set_free(common_set);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
         fprintf(stderr, "@DEBUG: \n       切分的维度是： %d .\n", amp_bset->split_dim);
-        fprintf(stderr, "       切分维度后新的左约束的仿射表达式是： \n");
+        fprintf(stderr, "       新的左分支的仿射表达式是： \n");
         isl_aff_dump(aff_left);
-        fprintf(stderr, "       切分维度后新的右约束的仿射表达式是： \n");
+        fprintf(stderr, "       新的右分支的仿射表达式是： \n");
         isl_aff_dump(aff_right);
         fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
