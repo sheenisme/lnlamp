@@ -1,35 +1,33 @@
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <isl/polynomial.h>
-#include <isl/union_set.h>
-#include <isl/union_map.h>
-#include <isl/map_to_basic_set.h>
-#include <isl/set.h>
 #include <isl/aff.h>
-#include <isl/ilp.h>
+#include <isl/ast.h>
+#include <isl/ast_build.h>
 #include <isl/flow.h>
+#include <isl/ilp.h>
+#include <isl/map_to_basic_set.h>
+#include <isl/options.h>
+#include <isl/polynomial.h>
 #include <isl/schedule.h>
 #include <isl/schedule_node.h>
-#include <isl/options.h>
-#include <isl/ast.h>
+#include <isl/set.h>
+#include <isl/union_map.h>
+#include <isl/union_set.h>
 #include <isl/val.h>
-#include <isl/ast_build.h>
 
 #include "amp.h"
 #include "hybrid.h"
-#include "schedule.h"
 #include "ppcg_options.h"
 #include "print.h"
+#include "schedule.h"
 #include "util.h"
 
 // dump amp_stmt_access
-void amp_stmt_access_dump(struct amp_stmt_access *access)
-{
-    if (access)
-    {
+void amp_stmt_access_dump(struct amp_stmt_access *access) {
+    if (access) {
         fprintf(stderr, "       the   amp_stmt_access  is on the below :\n");
         fprintf(stderr, "          the       read      is %d \n", access->read);
         fprintf(stderr, "          the       write     is %d \n", access->write);
@@ -44,24 +42,18 @@ void amp_stmt_access_dump(struct amp_stmt_access *access)
         fprintf(stderr, "          the     ref_id      is: \n");
         isl_id_dump(access->ref_id);
         fprintf(stderr, "          the      next       is: \n");
-        if (access->next)
-        {
+        if (access->next) {
             amp_stmt_access_dump(access->next);
-        }
-        else
+        } else
             fprintf(stderr, "NULL\n");
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN:          sorry, the amp_stmt_access is NULL !!! \n");
     }
 }
 
 // dump the amp_group_data
-void amp_group_data_dump(struct amp_group_data *data)
-{
-    if (data)
-    {
+void amp_group_data_dump(struct amp_group_data *data) {
+    if (data) {
         fprintf(stderr, "       the     amp_group_data    is on the below : \n");
         fprintf(stderr, "          the   kernel_depth     is %d \n", data->kernel_depth);
         fprintf(stderr, "          the   shared_depth     is %d \n", data->shared_depth);
@@ -79,18 +71,14 @@ void amp_group_data_dump(struct amp_group_data *data)
         isl_union_map_dump(data->thread_sched);
         fprintf(stderr, "          the    full_sched      is:   \n");
         isl_union_map_dump(data->full_sched);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN:\n       sorry, the amp_group_data is NULL !!! \n");
     }
 }
 
 // dump the amp_array_bound
-void amp_array_bound_dump(struct amp_array_bound *bound)
-{
-    if (bound)
-    {
+void amp_array_bound_dump(struct amp_array_bound *bound) {
+    if (bound) {
         fprintf(stderr, "       the amp_array_bound is on the below :\n");
         fprintf(stderr, "          the      size    is: \n");
         if (bound->size)
@@ -104,18 +92,14 @@ void amp_array_bound_dump(struct amp_array_bound *bound)
         fprintf(stderr, "          the    shift     is: \n");
         if (bound->shift)
             isl_aff_dump(bound->shift);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "   @WARN: \n       sorry, the amp_array_bound is NULL !!! \n");
     }
 }
 
 // dump the amp_array_tile
-void amp_array_tile_dump(struct amp_array_tile *tile)
-{
-    if (tile)
-    {
+void amp_array_tile_dump(struct amp_array_tile *tile) {
+    if (tile) {
         fprintf(stderr, "       the amp_array_tile is on the below :\n");
         fprintf(stderr, "          the   depth     is %d \n", tile->depth);
         fprintf(stderr, "          the     n       is %d \n", tile->n);
@@ -124,18 +108,14 @@ void amp_array_tile_dump(struct amp_array_tile *tile)
             isl_multi_aff_dump(tile->tiling);
         fprintf(stderr, "          the   bound     is:   \n");
         amp_array_bound_dump(tile->bound);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_array_tile is NULL !!! \n");
     }
 }
 
 // dump the amp_array_info
-void amp_array_info_dump(struct amp_array_info *info)
-{
-    if (info)
-    {
+void amp_array_info_dump(struct amp_array_info *info) {
+    if (info) {
         fprintf(stderr, "       the       amp_array_info     is on the below :\n");
         fprintf(stderr, "          the         type          is %s \n", info->type);
         fprintf(stderr, "          the         name          is %s \n", info->name);
@@ -153,8 +133,7 @@ void amp_array_info_dump(struct amp_array_info *info)
         fprintf(stderr, "          the      bound_expr       is :  \n");
         isl_ast_expr_dump(info->bound_expr);
         fprintf(stderr, "          the         n_ref         is %d \n", info->n_ref);
-        for (int r = 0; r < info->n_ref; r++)
-        {
+        for (int r = 0; r < info->n_ref; r++) {
             fprintf(stderr, "          the         refs[%d]      is:   \n", r);
             amp_stmt_access_dump(info->refs[r]);
         }
@@ -169,18 +148,14 @@ void amp_array_info_dump(struct amp_array_info *info)
         fprintf(stderr, "          the      linearize        is %d \n", info->linearize);
         fprintf(stderr, "          the      dep_order        is :  \n");
         isl_union_map_dump(info->dep_order);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_array_info is NULL !!! \n");
     }
 }
 
 // dump the amp_array_ref_group
-void amp_array_ref_group_dump(struct amp_array_ref_group *group)
-{
-    if (group)
-    {
+void amp_array_ref_group_dump(struct amp_array_ref_group *group) {
+    if (group) {
         fprintf(stderr, "       the amp_array_ref_group is on the below :\n");
         fprintf(stderr, "          the      nr          is %d \n", group->nr);
         fprintf(stderr, "          the    write         is %d \n", group->write);
@@ -196,18 +171,14 @@ void amp_array_ref_group_dump(struct amp_array_ref_group *group)
         amp_array_info_dump(group->array);
         // fprintf(stderr, "          the    local_array   is: \n");
         // amp_local_array_info_dump(group->local_array);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_array_ref_group is NULL !!! \n");
     }
 }
 
 // dump the amp_local_array_info
-void amp_local_array_info_dump(struct amp_local_array_info *info)
-{
-    if (info)
-    {
+void amp_local_array_info_dump(struct amp_local_array_info *info) {
+    if (info) {
         fprintf(stderr, "       the amp_local_array_info is on the below :\n");
         fprintf(stderr, "          the     global        is %d \n", info->global);
         fprintf(stderr, "          the     n_index       is %d \n", info->n_index);
@@ -216,42 +187,33 @@ void amp_local_array_info_dump(struct amp_local_array_info *info)
         fprintf(stderr, "          the     bound_expr    is :  \n");
         isl_ast_expr_dump(info->bound_expr);
         fprintf(stderr, "          the     n_group       is %d \n", info->n_group);
-        for (int i = 0; i < info->n_group; i++)
-        {
+        for (int i = 0; i < info->n_group; i++) {
             fprintf(stderr, "          the    groups[%d]     is :  \n", i);
             amp_array_ref_group_dump(info->groups[i]);
         }
         fprintf(stderr, "          the     array         is :  \n");
         amp_array_info_dump(info->array);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_local_array_info is NULL !!! \n");
     }
 }
 
 // dump amp_stmt
-void amp_stmt_dump(struct amp_stmt *stmts)
-{
-    if (stmts)
-    {
+void amp_stmt_dump(struct amp_stmt *stmts) {
+    if (stmts) {
         fprintf(stderr, "       the      amp_stmt   is on the below :\n");
         fprintf(stderr, "          the      id      is: \n");
         isl_id_dump(stmts->id);
         fprintf(stderr, "          the   accesses   is: \n");
         amp_stmt_access_dump(stmts->accesses);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_stmt is NULL !!! \n");
     }
 }
 
 // dump amp_prog
-void amp_prog_dump(struct amp_prog *prog)
-{
-    if (prog)
-    {
+void amp_prog_dump(struct amp_prog *prog) {
+    if (prog) {
         fprintf(stderr, "       the      amp_prog       is on the below :\n");
         fprintf(stderr, "          the      context     is: \n");
         isl_set_dump(prog->context);
@@ -274,29 +236,23 @@ void amp_prog_dump(struct amp_prog *prog)
         fprintf(stderr, "          the    array_order  is: \n");
         isl_union_map_dump(prog->array_order);
         fprintf(stderr, "          the   n_stmts   is: %d \n", prog->n_stmts);
-        for (int s = 0; s < prog->n_stmts; s++)
-        {
+        for (int s = 0; s < prog->n_stmts; s++) {
             fprintf(stderr, "          the  stmts[%d]  is: \n", s);
             amp_stmt_dump(prog->stmts + s);
         }
         fprintf(stderr, "          the   n_array   is: %d \n", prog->n_array);
-        for (int a = 0; a < prog->n_array; a++)
-        {
+        for (int a = 0; a < prog->n_array; a++) {
             fprintf(stderr, "          the  array[%d]  is: \n", a);
             amp_array_info_dump(prog->array + a);
         }
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_prog is NULL !!! \n");
     }
 }
 
 // dump amp_ppcg_kernel
-void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
-{
-    if (kernel)
-    {
+void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel) {
+    if (kernel) {
         fprintf(stderr, "       the   amp_ppcg_kernel  is on the below :\n");
         fprintf(stderr, "          the       id        is: %d \n", kernel->id);
         fprintf(stderr, "          the      prog       is: \n");
@@ -316,8 +272,7 @@ void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
         fprintf(stderr, "          the     space       is: \n");
         isl_space_dump(kernel->space);
         fprintf(stderr, "          the    n_array      is: %d \n", kernel->n_array);
-        for (int r = 0; r < kernel->n_array; r++)
-        {
+        for (int r = 0; r < kernel->n_array; r++) {
             fprintf(stderr, "          the     array[%d]       is: \n", r);
             amp_local_array_info_dump(kernel->array);
         }
@@ -331,17 +286,14 @@ void amp_ppcg_kernel_dump(struct amp_ppcg_kernel *kernel)
         fprintf(stderr, "          the copy_schedule_dim is: %d \n", kernel->copy_schedule_dim);
         fprintf(stderr, "          the       tree       is: \n");
         isl_ast_node_dump(kernel->tree);
-    }
-    else
-    {
+    } else {
         fprintf(stderr, "    @WARN: \n       sorry, the amp_ppcg_kernel is NULL !!! \n");
     }
 }
 
 /* Return the name of the outer array (of structs) accessed by "access".
  */
-static const char *get_outer_array_name(__isl_keep isl_map *access)
-{
+static const char *get_outer_array_name(__isl_keep isl_map *access) {
     isl_space *space;
     const char *name;
 
@@ -357,20 +309,17 @@ static const char *get_outer_array_name(__isl_keep isl_map *access)
 /* Collect all references to the given array and store pointers to them
  * in array->refs.
  */
-static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array)
-{
+static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array) {
     // #define DEBUG_COLLECT_REFERRNCES
     int i;
     int n;
 
     n = 0;
-    for (i = 0; i < prog->n_stmts; ++i)
-    {
+    for (i = 0; i < prog->n_stmts; ++i) {
         struct amp_stmt *stmt = &prog->stmts[i];
         struct amp_stmt_access *access;
 
-        for (access = stmt->accesses; access; access = access->next)
-        {
+        for (access = stmt->accesses; access; access = access->next) {
             const char *name;
             name = get_outer_array_name(access->access);
             if (name && !strcmp(array->name, name))
@@ -384,13 +333,11 @@ static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array)
     array->n_ref = n;
 
     n = 0;
-    for (i = 0; i < prog->n_stmts; ++i)
-    {
+    for (i = 0; i < prog->n_stmts; ++i) {
         struct amp_stmt *stmt = &prog->stmts[i];
         struct amp_stmt_access *access;
 
-        for (access = stmt->accesses; access; access = access->next)
-        {
+        for (access = stmt->accesses; access; access = access->next) {
             const char *name;
             name = get_outer_array_name(access->access);
             if (!name || strcmp(array->name, name))
@@ -402,8 +349,7 @@ static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array)
 
 #ifdef DEBUG_COLLECT_REFERRNCES
     fprintf(stderr, "@DEBUG: \n       the array->refs of the collect_references function is:\n");
-    for (int r = 0; r < array->n_ref; r++)
-    {
+    for (int r = 0; r < array->n_ref; r++) {
         fprintf(stderr, "       array->refs[%d] :\n", r);
         amp_stmt_access_dump(array->refs[r]);
         fprintf(stderr, "\n");
@@ -423,8 +369,7 @@ static isl_stat collect_references(amp_prog *prog, struct amp_array_info *array)
  * because that may be unbounded.  Furthermore, even if it is bounded,
  * it may be larger than the piece of the array that is being accessed.
  */
-static __isl_give isl_set *amp_compute_extent(struct pet_array *array, __isl_keep isl_set *accessed)
-{
+static __isl_give isl_set *amp_compute_extent(struct pet_array *array, __isl_keep isl_set *accessed) {
     int n_index;
     isl_id *id;
     isl_set *outer;
@@ -451,8 +396,7 @@ static __isl_give isl_set *amp_compute_extent(struct pet_array *array, __isl_kee
  * That is, is "array" a scalar that is never possibly written to.
  * An array containing structures is never considered to be a scalar.
  */
-static int is_read_only_scalar(struct amp_array_info *array, amp_prog *prog)
-{
+static int is_read_only_scalar(struct amp_array_info *array, amp_prog *prog) {
     isl_set *space;
     isl_union_map *write;
     int empty;
@@ -474,8 +418,7 @@ static int is_read_only_scalar(struct amp_array_info *array, amp_prog *prog)
 /* Is "array" only accessed as individual, fixed elements?
  * That is, does each access to "array" access a single, fixed element?
  */
-static isl_bool only_fixed_element_accessed(struct amp_array_info *array)
-{
+static isl_bool only_fixed_element_accessed(struct amp_array_info *array) {
     int i;
 
     for (i = 0; i < array->n_ref; ++i)
@@ -494,8 +437,7 @@ static isl_bool only_fixed_element_accessed(struct amp_array_info *array)
  * i.e., if the array is a scalar, we check whether it is read-only.
  * We also check whether the array is accessed at all.
  */
-static isl_stat extract_array_info(amp_prog *prog, struct amp_array_info *info, struct pet_array *pa, __isl_keep isl_union_set *arrays)
-{
+static isl_stat extract_array_info(amp_prog *prog, struct amp_array_info *info, struct pet_array *pa, __isl_keep isl_union_set *arrays) {
     int empty;
     const char *name;
     int n_index;
@@ -557,12 +499,10 @@ static isl_stat extract_array_info(amp_prog *prog, struct amp_array_info *info, 
  * considered coincident so we should indeed remove those constraints
  * from the order constraints.
  */
-static __isl_give isl_union_map *remove_independences(amp_prog *prog, struct amp_array_info *array, __isl_take isl_union_map *order)
-{
+static __isl_give isl_union_map *remove_independences(amp_prog *prog, struct amp_array_info *array, __isl_take isl_union_map *order) {
     int i;
 
-    for (i = 0; i < prog->scop->pet->n_independence; ++i)
-    {
+    for (i = 0; i < prog->scop->pet->n_independence; ++i) {
         struct pet_independence *pi = prog->scop->pet->independences[i];
         if (isl_union_set_contains(pi->local, array->space))
             continue;
@@ -577,8 +517,7 @@ static __isl_give isl_union_map *remove_independences(amp_prog *prog, struct amp
  * That is, is it only accessed as individual elements with
  * constant index expressions?
  */
-isl_bool amp_array_can_be_private(struct amp_array_info *array)
-{
+isl_bool amp_array_can_be_private(struct amp_array_info *array) {
     if (!array)
         return isl_bool_error;
     return array->only_fixed_element;
@@ -595,8 +534,7 @@ isl_bool amp_array_can_be_private(struct amp_array_info *array)
  * for all arrays that cannot be mapped to private memory in prog->array_order.
  */
 /* multiple definition with GPU */
-void amp_collect_order_dependences(amp_prog *prog)
-{
+void amp_collect_order_dependences(amp_prog *prog) {
     int i;
     isl_space *space;
     isl_union_map *accesses;
@@ -609,8 +547,7 @@ void amp_collect_order_dependences(amp_prog *prog)
     accesses = isl_union_map_universe(accesses);
     accesses = isl_union_map_apply_range(accesses, isl_union_map_copy(prog->to_outer));
 
-    for (i = 0; i < prog->n_array; ++i)
-    {
+    for (i = 0; i < prog->n_array; ++i) {
         struct amp_array_info *array = &prog->array[i];
         isl_set *set;
         isl_union_set *uset;
@@ -647,8 +584,7 @@ void amp_collect_order_dependences(amp_prog *prog)
  * If we are allowing live range reordering, then also set
  * the dep_order field.  Otherwise leave it NULL.
  */
-static isl_stat collect_array_info(amp_prog *prog)
-{
+static isl_stat collect_array_info(amp_prog *prog) {
     int i;
     isl_stat r = isl_stat_ok;
     isl_union_set *arrays;
@@ -665,8 +601,7 @@ static isl_stat collect_array_info(amp_prog *prog)
 
     arrays = isl_union_set_coalesce(arrays);
 
-    for (i = 0; i < prog->scop->pet->n_array; ++i)
-    {
+    for (i = 0; i < prog->scop->pet->n_array; ++i) {
         isl_bool field;
 
         field = isl_set_is_wrapping(prog->scop->pet->arrays[i]->extent);
@@ -689,12 +624,10 @@ static isl_stat collect_array_info(amp_prog *prog)
 }
 
 // free array_info in amp_prog
-static void free_array_info(amp_prog *prog)
-{
+static void free_array_info(amp_prog *prog) {
     int i;
 
-    for (i = 0; i < prog->n_array; ++i)
-    {
+    for (i = 0; i < prog->n_array; ++i) {
         free(prog->array[i].type);
         free(prog->array[i].name);
         isl_multi_pw_aff_free(prog->array[i].bound);
@@ -714,15 +647,13 @@ static void free_array_info(amp_prog *prog)
  * At the moment, scalars are represented as zero-dimensional arrays.
  * Note that the single data element may be an entire structure.
  */
-int amp_array_is_scalar(struct amp_array_info *array)
-{
+int amp_array_is_scalar(struct amp_array_info *array) {
     return array->n_index == 0;
 }
 
 /* Is "array" a read-only scalar?
  */
-int amp_array_is_read_only_scalar(struct amp_array_info *array)
-{
+int amp_array_is_read_only_scalar(struct amp_array_info *array) {
     return array->read_only_scalar;
 }
 
@@ -730,8 +661,7 @@ int amp_array_is_read_only_scalar(struct amp_array_info *array)
  * That is, is the instance set of "scop" free from any
  * instances of "stmt"?
  */
-static isl_bool is_stmt_killed(struct ppcg_scop *scop, struct pet_stmt *stmt)
-{
+static isl_bool is_stmt_killed(struct ppcg_scop *scop, struct pet_stmt *stmt) {
     isl_space *space;
     isl_set *left;
     isl_bool empty;
@@ -757,8 +687,7 @@ static isl_bool is_stmt_killed(struct ppcg_scop *scop, struct pet_stmt *stmt)
  * (no pointer to a lower-dimensional slice of the accessed array)
  * and a single element is being accessed.
  */
-static isl_bool complete_index(__isl_keep pet_expr *expr, __isl_keep isl_multi_pw_aff *index)
-{
+static isl_bool complete_index(__isl_keep pet_expr *expr, __isl_keep isl_multi_pw_aff *index) {
     isl_union_map *read, *write, *all;
     isl_map *map;
     isl_space *space1, *space2;
@@ -769,8 +698,7 @@ static isl_bool complete_index(__isl_keep pet_expr *expr, __isl_keep isl_multi_p
     all = isl_union_map_union(read, write);
     if (!all)
         return isl_bool_error;
-    if (isl_union_map_n_map(all) != 1)
-    {
+    if (isl_union_map_n_map(all) != 1) {
         isl_union_map_free(all);
         return isl_bool_false;
     }
@@ -786,8 +714,7 @@ static isl_bool complete_index(__isl_keep pet_expr *expr, __isl_keep isl_multi_p
     return complete;
 }
 
-static isl_bool accesses_fixed_element(__isl_keep pet_expr *expr)
-{
+static isl_bool accesses_fixed_element(__isl_keep pet_expr *expr) {
     int i, n;
     isl_multi_pw_aff *index;
     isl_bool fixed = isl_bool_true;
@@ -796,8 +723,7 @@ static isl_bool accesses_fixed_element(__isl_keep pet_expr *expr)
     if (index < 0)
         return isl_bool_error;
     n = isl_multi_pw_aff_dim(index, isl_dim_out);
-    for (i = 0; i < n; ++i)
-    {
+    for (i = 0; i < n; ++i) {
         isl_pw_aff *pa;
 
         pa = isl_multi_pw_aff_get_pw_aff(index, 0);
@@ -821,8 +747,7 @@ static isl_bool accesses_fixed_element(__isl_keep pet_expr *expr)
  * an expression statement (i.e., a statement without internal control).
  * "any_to_outer" maps all intermediate arrays to their outer arrays.
  */
-struct ppcg_extract_access_data
-{
+struct ppcg_extract_access_data {
     struct amp_stmt_access **next_access;
     int single_expression;
     isl_union_map *any_to_outer;
@@ -845,8 +770,7 @@ struct ppcg_extract_access_data
  * if the access relation is empty.
  */
 static __isl_give isl_map *extract_single_tagged_access(
-    __isl_take isl_union_map *tagged, __isl_keep pet_expr *expr)
-{
+    __isl_take isl_union_map *tagged, __isl_keep pet_expr *expr) {
     int empty;
     isl_id *id;
     isl_space *space, *space2;
@@ -887,8 +811,7 @@ error:
  * therefore from a single index expression.  These accesses therefore
  * all map to the same outer array.
  */
-static int extract_access(__isl_keep pet_expr *expr, void *user)
-{
+static int extract_access(__isl_keep pet_expr *expr, void *user) {
     struct ppcg_extract_access_data *data = user;
     isl_union_map *tagged;
     struct amp_stmt_access *access;
@@ -904,16 +827,11 @@ static int extract_access(__isl_keep pet_expr *expr, void *user)
     tagged = pet_expr_access_get_tagged_may_read(expr);
     tagged = isl_union_map_union(tagged, pet_expr_access_get_tagged_may_write(expr));
     tagged = isl_union_map_apply_range(tagged, isl_union_map_copy(data->any_to_outer));
-    if (!access->write)
-    {
+    if (!access->write) {
         access->exact_write = 1;
-    }
-    else if (!data->single_expression)
-    {
+    } else if (!data->single_expression) {
         access->exact_write = 0;
-    }
-    else
-    {
+    } else {
         isl_union_map *must, *may;
         may = isl_union_map_copy(tagged);
         may = isl_union_map_domain_factor_domain(may);
@@ -944,8 +862,7 @@ static int extract_access(__isl_keep pet_expr *expr, void *user)
  * one for each access expression in the statement body.
  * "any_to_outer" maps all intermediate arrays to their outer arrays.
  */
-static int pet_stmt_extract_accesses(struct amp_stmt *stmt, __isl_keep isl_union_map *any_to_outer)
-{
+static int pet_stmt_extract_accesses(struct amp_stmt *stmt, __isl_keep isl_union_map *any_to_outer) {
     struct ppcg_extract_access_data data;
 
     stmt->accesses = NULL;
@@ -955,19 +872,16 @@ static int pet_stmt_extract_accesses(struct amp_stmt *stmt, __isl_keep isl_union
     return pet_tree_foreach_access_expr(stmt->stmt->body, &extract_access, &data);
 }
 
-static void *free_stmts(struct amp_stmt *stmts, int n)
-{
+static void *free_stmts(struct amp_stmt *stmts, int n) {
     int i;
 
     if (!stmts)
         return NULL;
 
-    for (i = 0; i < n; ++i)
-    {
+    for (i = 0; i < n; ++i) {
         struct amp_stmt_access *access, *next;
 
-        for (access = stmts[i].accesses; access; access = next)
-        {
+        for (access = stmts[i].accesses; access; access = next) {
             next = access->next;
             isl_id_free(access->ref_id);
             isl_map_free(access->access);
@@ -986,8 +900,7 @@ static void *free_stmts(struct amp_stmt *stmts, int n)
  * Do not collect array accesses for statements that have been killed.
  */
 static struct amp_stmt *extract_stmts(isl_ctx *ctx, struct ppcg_scop *scop,
-                                      __isl_keep isl_union_map *any_to_outer)
-{
+                                      __isl_keep isl_union_map *any_to_outer) {
     int i;
     struct amp_stmt *stmts;
 
@@ -995,8 +908,7 @@ static struct amp_stmt *extract_stmts(isl_ctx *ctx, struct ppcg_scop *scop,
     if (!stmts)
         return NULL;
 
-    for (i = 0; i < scop->pet->n_stmt; ++i)
-    {
+    for (i = 0; i < scop->pet->n_stmt; ++i) {
         struct amp_stmt *s = &stmts[i];
         isl_bool killed;
 
@@ -1019,15 +931,13 @@ static struct amp_stmt *extract_stmts(isl_ctx *ctx, struct ppcg_scop *scop,
  * arrays that are not local to "prog" and remove those elements that
  * are definitely killed or definitely written by "prog".
  */
-static __isl_give isl_union_set *compute_may_persist(amp_prog *prog)
-{
+static __isl_give isl_union_set *compute_may_persist(amp_prog *prog) {
     int i;
     isl_union_set *may_persist, *killed;
     isl_union_map *must_kill;
 
     may_persist = isl_union_set_empty(isl_set_get_space(prog->context));
-    for (i = 0; i < prog->n_array; ++i)
-    {
+    for (i = 0; i < prog->n_array; ++i) {
         isl_set *extent;
 
         if (prog->array[i].local)
@@ -1048,8 +958,7 @@ static __isl_give isl_union_set *compute_may_persist(amp_prog *prog)
     return may_persist;
 }
 
-void *amp_prog_free(amp_prog *prog)
-{
+void *amp_prog_free(amp_prog *prog) {
     if (!prog)
         return NULL;
     free_array_info(prog);
@@ -1069,8 +978,7 @@ void *amp_prog_free(amp_prog *prog)
     return NULL;
 }
 
-amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop)
-{
+amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop) {
     amp_prog *prog;
     isl_space *space;
     isl_map *id;
@@ -1116,8 +1024,7 @@ amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop)
 }
 
 /** 获得比当前精度更低的数据类型 **/
-char *amp_get_lower_precision_type(char *type)
-{
+char *amp_get_lower_precision_type(char *type) {
     // 生成更低精度的
     if (strcmp("double", type) == 0)
         return "float";
@@ -1135,8 +1042,7 @@ char *amp_get_lower_precision_type(char *type)
  * If this device memory is not accessed at all, then it does not
  * need to be allocated either.
  */
-static int amp_array_requires_allocation(struct amp_array_info *array)
-{
+static int amp_array_requires_allocation(struct amp_array_info *array) {
     // if (amp_array_is_read_only_scalar(array))
     //     return 0;
     return 1;
@@ -1148,12 +1054,10 @@ static int amp_array_requires_allocation(struct amp_array_info *array)
  * on the host.
  * "node" is freed in case of error.
  */
-__isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, amp_prog *prog, __isl_keep isl_ast_build *build)
-{
+__isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, amp_prog *prog, __isl_keep isl_ast_build *build) {
     int i;
 
-    for (i = 0; i < prog->n_array; ++i)
-    {
+    for (i = 0; i < prog->n_array; ++i) {
         struct amp_array_info *array = &prog->array[i];
         isl_multi_pw_aff *size;
         isl_ast_expr *expr;
@@ -1168,8 +1072,7 @@ __isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, a
             return isl_ast_node_free(node);
     }
 
-    for (i = 0; i < prog->n_array; ++i)
-    {
+    for (i = 0; i < prog->n_array; ++i) {
         struct amp_array_info *array = &prog->array[i];
         isl_set *extent;
         isl_multi_pw_aff *size;
@@ -1190,8 +1093,7 @@ __isl_give isl_ast_node *amp_build_array_bounds(__isl_take isl_ast_node *node, a
 
 /* Is "node" a mark node with an identifier called "name"?
  */
-static int is_marked(__isl_keep isl_schedule_node *node, const char *name)
-{
+static int is_marked(__isl_keep isl_schedule_node *node, const char *name) {
     isl_id *mark;
     int has_name;
 
@@ -1213,37 +1115,32 @@ static int is_marked(__isl_keep isl_schedule_node *node, const char *name)
 
 /* Is "node" a mark node with an identifier called "kernel"?
  */
-int amp_tree_node_is_kernel(__isl_keep isl_schedule_node *node)
-{
+int amp_tree_node_is_kernel(__isl_keep isl_schedule_node *node) {
     return is_marked(node, "amp_kernel");
 }
 
 /* Is "node" a mark node with an identifier called "amp_higher"?
  */
-static int node_is_amp_higher(__isl_keep isl_schedule_node *node)
-{
+static int node_is_amp_higher(__isl_keep isl_schedule_node *node) {
     return is_marked(node, "amp_higher");
 }
 
 /* Is "node" a mark node with an identifier called "amp_lower"?
  */
-static int node_is_amp_lower(__isl_keep isl_schedule_node *node)
-{
+static int node_is_amp_lower(__isl_keep isl_schedule_node *node) {
     return is_marked(node, "amp_lower");
 }
 
 /* Is "node" a mark node with an identifier called "shared"?
  */
-static int node_is_shared(__isl_keep isl_schedule_node *node)
-{
+static int node_is_shared(__isl_keep isl_schedule_node *node) {
     return is_marked(node, "shared");
 }
 
 /* Is "node" a mark node with an identifier called "thread"?
  * in the amp_kernel, 'thread' mark means an atomic calculation, which without modification.
  */
-static int node_is_thread(__isl_keep isl_schedule_node *node)
-{
+static int node_is_thread(__isl_keep isl_schedule_node *node) {
     return is_marked(node, "thread");
 }
 
@@ -1253,8 +1150,7 @@ static int node_is_thread(__isl_keep isl_schedule_node *node)
  * the tile with the smallest depth is used.  If both have the same depth,
  * then the private tile is used.
  */
-enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group *group)
-{
+enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group *group) {
     if (group->shared_tile)
         return ppcg_access_shared;
     return ppcg_access_global;
@@ -1263,23 +1159,20 @@ enum ppcg_group_access_type amp_array_ref_group_type(struct amp_array_ref_group 
 /* Print the name of the local copy of a given group of array references.
  */
 __isl_give isl_printer *amp_array_ref_group_print_name(
-    struct amp_array_ref_group *group, __isl_take isl_printer *p)
-{
+    struct amp_array_ref_group *group, __isl_take isl_printer *p) {
     int global = 0;
     enum ppcg_group_access_type type;
 
     type = amp_array_ref_group_type(group);
     if (type == ppcg_access_shared)
         p = isl_printer_print_str(p, "amp_lower_");
-    else
-    {
+    else {
         global = 1;
         p = isl_printer_print_str(p, "amp_lower_");
     }
 
     p = isl_printer_print_str(p, group->array->name);
-    if (!global && group->local_array->n_group > 1)
-    {
+    if (!global && group->local_array->n_group > 1) {
         p = isl_printer_print_str(p, "_");
         p = isl_printer_print_int(p, group->nr);
     }
@@ -1290,8 +1183,7 @@ __isl_give isl_printer *amp_array_ref_group_print_name(
 /* Insert a mark node with identifier "shared" in front of "node".
  */
 static __isl_give isl_schedule_node *insert_shared(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     isl_ctx *ctx;
     isl_id *id;
 
@@ -1305,8 +1197,7 @@ static __isl_give isl_schedule_node *insert_shared(
 /* Insert a mark node with identifier "amp_lower" in front of "node".
  */
 static __isl_give isl_schedule_node *insert_amp_lower(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     isl_ctx *ctx;
     isl_id *id;
 
@@ -1320,8 +1211,7 @@ static __isl_give isl_schedule_node *insert_amp_lower(
 /* Insert a mark node with identifier "amp_higher" in front of "node".
  */
 static __isl_give isl_schedule_node *insert_amp_higher(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     isl_ctx *ctx;
     isl_id *id;
 
@@ -1334,8 +1224,7 @@ static __isl_give isl_schedule_node *insert_amp_higher(
 
 /* Mark all dimensions in the current band node atomic.
  */
-static __isl_give isl_schedule_node *atomic(__isl_take isl_schedule_node *node)
-{
+static __isl_give isl_schedule_node *atomic(__isl_take isl_schedule_node *node) {
     return ppcg_set_schedule_node_type(node, isl_ast_loop_atomic);
 }
 
@@ -1344,8 +1233,7 @@ static __isl_give isl_schedule_node *atomic(__isl_take isl_schedule_node *node)
  * Return a pointer to "node" (in the updated schedule tree).
  */
 static __isl_give isl_schedule_node *atomic_ancestors(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     // #define DEBUG_ATOMIC_ANCESTORS
 
 #ifdef DEBUG_ATOMIC_ANCESTORS
@@ -1385,8 +1273,7 @@ static __isl_give isl_schedule_node *atomic_ancestors(
  * in between "node" and this "thread" mark.
  */
 __isl_give isl_schedule_node *amp_tree_insert_shared_before_thread(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     int depth0, depth;
     int any_shared = 0;
 
@@ -1395,13 +1282,11 @@ __isl_give isl_schedule_node *amp_tree_insert_shared_before_thread(
 
     depth0 = isl_schedule_node_get_tree_depth(node);
 
-    for (;;)
-    {
+    for (;;) {
         int is_thread;
         int n;
 
-        if (!any_shared)
-        {
+        if (!any_shared) {
             any_shared = node_is_shared(node);
             if (any_shared < 0)
                 return isl_schedule_node_free(node);
@@ -1439,8 +1324,7 @@ __isl_give isl_schedule_node *amp_tree_insert_shared_before_thread(
  * in "core"?
  */
 static int node_is_core(__isl_keep isl_schedule_node *node,
-                        __isl_keep isl_union_set *core)
-{
+                        __isl_keep isl_union_set *core) {
     int disjoint;
     isl_union_set *filter;
 
@@ -1464,16 +1348,14 @@ static int node_is_core(__isl_keep isl_schedule_node *node,
  * of the filter node.
  */
 static __isl_give isl_schedule_node *core_child(
-    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core)
-{
+    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core) {
     int i, n;
 
     if (isl_schedule_node_get_type(node) != isl_schedule_node_sequence)
         return isl_schedule_node_child(node, 0);
 
     n = isl_schedule_node_n_children(node);
-    for (i = 0; i < n; ++i)
-    {
+    for (i = 0; i < n; ++i) {
         int is_core;
 
         node = isl_schedule_node_child(node, i);
@@ -1496,8 +1378,7 @@ static __isl_give isl_schedule_node *core_child(
  * mark is identified by the domain elements in "core".
  */
 __isl_give isl_schedule_node *amp_tree_move_down_to_shared(
-    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core)
-{
+    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core) {
     int is_shared;
 
     while ((is_shared = node_is_shared(node)) == 0)
@@ -1513,8 +1394,7 @@ __isl_give isl_schedule_node *amp_tree_move_down_to_shared(
  * mark is identified by the domain elements in "core".
  */
 __isl_give isl_schedule_node *amp_tree_move_down_to_thread(
-    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core)
-{
+    __isl_take isl_schedule_node *node, __isl_keep isl_union_set *core) {
     int is_thread;
 
     while ((is_thread = node_is_thread(node)) == 0)
@@ -1529,8 +1409,7 @@ __isl_give isl_schedule_node *amp_tree_move_down_to_thread(
  * the "thread" mark is reached.
  */
 __isl_give isl_schedule_node *amp_tree_move_up_to_thread(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     int is_thread;
 
     while ((is_thread = node_is_thread(node)) == 0)
@@ -1545,8 +1424,7 @@ __isl_give isl_schedule_node *amp_tree_move_up_to_thread(
  * the "kernel" mark is reached.
  */
 __isl_give isl_schedule_node *amp_tree_move_up_to_kernel(
-    __isl_take isl_schedule_node *node)
-{
+    __isl_take isl_schedule_node *node) {
     int is_kernel;
 
     while ((is_kernel = amp_tree_node_is_kernel(node)) == 0)
@@ -1569,13 +1447,10 @@ __isl_give isl_schedule_node *amp_tree_move_up_to_kernel(
  */
 __isl_give isl_schedule_node *amp_tree_move_down_to_depth(
     __isl_take isl_schedule_node *node, int depth,
-    __isl_keep isl_union_set *core)
-{
+    __isl_keep isl_union_set *core) {
 
-    while (node && isl_schedule_node_get_schedule_depth(node) < depth)
-    {
-        if (isl_schedule_node_get_type(node) == isl_schedule_node_band)
-        {
+    while (node && isl_schedule_node_get_schedule_depth(node) < depth) {
+        if (isl_schedule_node_get_type(node) == isl_schedule_node_band) {
             int node_depth, node_dim;
             node_depth = isl_schedule_node_get_schedule_depth(node);
             node_dim = isl_schedule_node_band_n_member(node);
@@ -1596,8 +1471,7 @@ __isl_give isl_schedule_node *amp_tree_move_down_to_depth(
  * to point to a newly allocated array.
  */
 struct amp_array_ref_group *amp_array_ref_group_free(
-    struct amp_array_ref_group *group)
-{
+    struct amp_array_ref_group *group) {
     if (!group)
         return NULL;
 
@@ -1608,8 +1482,7 @@ struct amp_array_ref_group *amp_array_ref_group_free(
     return NULL;
 }
 
-struct amp_ppcg_kernel *amp_ppcg_kernel_free(struct amp_ppcg_kernel *kernel)
-{
+struct amp_ppcg_kernel *amp_ppcg_kernel_free(struct amp_ppcg_kernel *kernel) {
     int i, j;
 
     if (!kernel)
@@ -1624,8 +1497,7 @@ struct amp_ppcg_kernel *amp_ppcg_kernel_free(struct amp_ppcg_kernel *kernel)
 
     isl_union_pw_multi_aff_free(kernel->copy_schedule);
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *array = &kernel->array[i];
 
         for (j = 0; j < array->n_group; ++j)
@@ -1637,8 +1509,7 @@ struct amp_ppcg_kernel *amp_ppcg_kernel_free(struct amp_ppcg_kernel *kernel)
     }
     free(kernel->array);
 
-    for (i = 0; i < kernel->n_var; ++i)
-    {
+    for (i = 0; i < kernel->n_var; ++i) {
         free(kernel->var[i].name);
         isl_vec_free(kernel->var[i].size);
     }
@@ -1656,8 +1527,7 @@ struct amp_ppcg_kernel *amp_ppcg_kernel_free(struct amp_ppcg_kernel *kernel)
  * to the corresponding array in "prog".
  */
 static struct amp_ppcg_kernel *amp_ppcg_kernel_create_local_arrays(
-    struct amp_ppcg_kernel *kernel, struct amp_prog *prog)
-{
+    struct amp_ppcg_kernel *kernel, struct amp_prog *prog) {
     int i;
     isl_ctx *ctx;
 
@@ -1680,14 +1550,12 @@ static struct amp_ppcg_kernel *amp_ppcg_kernel_create_local_arrays(
  * access relations in the group.
  */
 __isl_give isl_union_map *amp_array_ref_group_access_relation(
-    struct amp_array_ref_group *group, int read, int write)
-{
+    struct amp_array_ref_group *group, int read, int write) {
     int i;
     isl_union_map *access;
 
     access = isl_union_map_empty(isl_map_get_space(group->access));
-    for (i = 0; i < group->n_ref; ++i)
-    {
+    for (i = 0; i < group->n_ref; ++i) {
         isl_map *map_i;
 
         if (!((read && group->refs[i]->read) ||
@@ -1703,14 +1571,12 @@ __isl_give isl_union_map *amp_array_ref_group_access_relation(
 /* Return the union of all tagged access relations in the group.
  */
 static __isl_give isl_union_map *amp_group_tagged_access_relation(
-    struct amp_array_ref_group *group)
-{
+    struct amp_array_ref_group *group) {
     int i;
     isl_union_map *access;
 
     access = isl_union_map_empty(isl_map_get_space(group->access));
-    for (i = 0; i < group->n_ref; ++i)
-    {
+    for (i = 0; i < group->n_ref; ++i) {
         isl_map *map_i;
 
         map_i = isl_map_copy(group->refs[i]->tagged_access);
@@ -1744,8 +1610,7 @@ static __isl_give isl_union_map *amp_group_tagged_access_relation(
  *	D -> A
  */
 static __isl_give isl_union_map *wrapped_reference_to_access(
-    __isl_take isl_union_set *ref, __isl_take isl_union_map *tagged)
-{
+    __isl_take isl_union_set *ref, __isl_take isl_union_map *tagged) {
     isl_union_map *tag2access;
 
     tag2access = isl_union_map_copy(tagged);
@@ -1840,8 +1705,7 @@ static __isl_give isl_union_map *wrapped_reference_to_access(
 static __isl_give isl_union_map *amp_remove_local_accesses(
     struct amp_prog *prog, __isl_take isl_union_map *tagged,
     __isl_take isl_union_map *access, __isl_take isl_union_map *sched,
-    int read)
-{
+    int read) {
     // #define DEBUG_AMP_REMOVE_LOCAL_ACCESSES
 
     int empty;
@@ -1851,8 +1715,7 @@ static __isl_give isl_union_map *amp_remove_local_accesses(
     isl_union_set *tag_set;
     struct ppcg_scop *ps = prog->scop;
 
-    if (isl_union_map_is_empty(access))
-    {
+    if (isl_union_map_is_empty(access)) {
         isl_union_map_free(sched);
         isl_union_map_free(tagged);
         return access;
@@ -1897,14 +1760,11 @@ static __isl_give isl_union_map *amp_remove_local_accesses(
     fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_REMOVE_LOCAL_ACCESSES
 
-    if (read)
-    {
+    if (read) {
         tag_set = isl_union_map_range(external);
         external = wrapped_reference_to_access(tag_set, tagged);
         external = isl_union_map_union(external, isl_union_map_copy(ps->live_in));
-    }
-    else
-    {
+    } else {
         tag_set = isl_union_map_domain(external);
         external = wrapped_reference_to_access(tag_set, tagged);
         external = isl_union_map_union(external, isl_union_map_copy(ps->live_out));
@@ -1935,8 +1795,7 @@ static __isl_give isl_union_map *amp_remove_local_accesses(
 static __isl_give isl_union_map *amp_remove_local_accesses_group(
     struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
     __isl_take isl_union_map *access, __isl_keep isl_union_map *prefix,
-    int read)
-{
+    int read) {
     // #define DEBUG_AMP_REMOVE_LOCAL_ACCESSES_GROUP
     isl_union_map *sched, *tagged;
 
@@ -1965,10 +1824,8 @@ static __isl_give isl_union_map *amp_remove_local_accesses_group(
 /* Return the effective gpu_array_tile associated to "group" or
  * NULL if there is no such gpu_array_tile.
  */
-struct amp_array_tile *amp_array_ref_group_tile(struct amp_array_ref_group *group)
-{
-    switch (amp_array_ref_group_type(group))
-    {
+struct amp_array_tile *amp_array_ref_group_tile(struct amp_array_ref_group *group) {
+    switch (amp_array_ref_group_type(group)) {
     case ppcg_access_shared:
         return group->shared_tile;
     case ppcg_access_global:
@@ -1988,8 +1845,7 @@ struct amp_array_tile *amp_array_ref_group_tile(struct amp_array_ref_group *grou
  */
 static __isl_give isl_union_map *anchored_non_local_accesses(
     struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
-    __isl_take isl_schedule_node *node, int read)
-{
+    __isl_take isl_schedule_node *node, int read) {
     // #define DEBUG_ANCHORED_NON_LOCAL_ACCESSES
 
     isl_union_map *access;
@@ -2051,8 +1907,7 @@ static __isl_give isl_union_map *anchored_non_local_accesses(
  * D corresponds to the outer tile->depth dimensions of
  * the kernel schedule.
  */
-static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_array_ref_group *group, int read)
-{
+static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_array_ref_group *group, int read) {
     isl_space *space;
     isl_id *id;
 
@@ -2149,8 +2004,7 @@ static __isl_give isl_multi_aff *create_from_access(isl_ctx *ctx, struct amp_arr
 
 static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
-    __isl_take isl_schedule_node *node, int read)
-{
+    __isl_take isl_schedule_node *node, int read) {
     // #define DEBUG_AMP_ADD_COPIES_GROUP
 
     struct amp_array_tile *tile;
@@ -2197,8 +2051,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 
     access = anchored_non_local_accesses(kernel, group, node, read);
     empty = isl_union_map_is_empty(access);
-    if (empty < 0 || empty)
-    {
+    if (empty < 0 || empty) {
         isl_union_map_free(access);
         if (empty < 0)
             return isl_schedule_node_free(node);
@@ -2221,8 +2074,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
-    if (tile->tiling)
-    {
+    if (tile->tiling) {
         ma = isl_multi_aff_copy(tile->tiling);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         fprintf(stderr, "@DEBUG: \n       the ma(tile->tiling) is: \n");
@@ -2238,8 +2090,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
 
-    else
-    {
+    else {
         ma = isl_multi_aff_copy(from_access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
@@ -2320,14 +2171,11 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
 
-    if (read)
-    {
+    if (read) {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_before(node, graft);
-    }
-    else
-    {
+    } else {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_after(node, graft);
@@ -2343,8 +2191,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 }
 
 static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
-                                                                 __isl_take isl_schedule_node *node, int read)
-{
+                                                                 __isl_take isl_schedule_node *node, int read) {
     // #define DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
     isl_union_map *access;
@@ -2363,8 +2210,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     char *local_name;
     isl_multi_aff *tiling;
 
-    if (!amp_array_is_scalar(group->array))
-    {
+    if (!amp_array_is_scalar(group->array)) {
         return node;
     }
 
@@ -2393,8 +2239,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
 
     access = anchored_non_local_accesses(kernel, group, node, read);
     empty = isl_union_map_is_empty(access);
-    if (empty < 0 || empty)
-    {
+    if (empty < 0 || empty) {
         isl_union_map_free(access);
         if (empty < 0)
             return isl_schedule_node_free(node);
@@ -2430,8 +2275,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     tiling = isl_multi_aff_set_tuple_name(tiling, isl_dim_out, local_name);
     free(local_name);
 
-    if (tiling)
-    {
+    if (tiling) {
         ma = isl_multi_aff_copy(tiling);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         fprintf(stderr, "@DEBUG: \n       the ma(tiling) is: \n");
@@ -2445,9 +2289,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
         isl_multi_aff_dump(ma);
         fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
-    }
-    else
-    {
+    } else {
         ma = isl_multi_aff_copy(from_access);
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
@@ -2528,14 +2370,11 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
     fprintf(stderr, "\n\n");
 #endif // DEBUG_AMP_ADD_COPIES_GROUP_GLOBAL
 
-    if (read)
-    {
+    if (read) {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_before(node, graft);
-    }
-    else
-    {
+    } else {
         node = amp_tree_move_down_to_shared(node, kernel->core);
         // node = amp_tree_move_down_to_depth(node, kernel_depth, kernel->core);
         node = isl_schedule_node_graft_after(node, graft);
@@ -2557,8 +2396,7 @@ static __isl_give isl_schedule_node *amp_add_copies_group_global(struct amp_ppcg
  * relation with the context of "prog".
  */
 static __isl_give isl_set *extract_context(__isl_keep isl_schedule_node *node,
-                                           struct amp_prog *prog)
-{
+                                           struct amp_prog *prog) {
     isl_union_map *schedule;
     isl_union_set *schedule_domain;
     isl_set *context;
@@ -2567,13 +2405,11 @@ static __isl_give isl_set *extract_context(__isl_keep isl_schedule_node *node,
     schedule = isl_schedule_node_get_prefix_schedule_relation(node);
     schedule_domain = isl_union_map_range(schedule);
     empty = isl_union_set_is_empty(schedule_domain);
-    if (empty < 0)
-    {
+    if (empty < 0) {
         isl_union_set_free(schedule_domain);
         return NULL;
     }
-    if (empty)
-    {
+    if (empty) {
         int depth;
         isl_space *space;
 
@@ -2583,9 +2419,7 @@ static __isl_give isl_set *extract_context(__isl_keep isl_schedule_node *node,
         depth = isl_schedule_node_get_schedule_depth(node);
         space = isl_space_add_dims(space, isl_dim_set, depth);
         context = isl_set_empty(space);
-    }
-    else
-    {
+    } else {
         context = isl_set_from_union_set(schedule_domain);
     }
     context = isl_set_intersect_params(context,
@@ -2603,15 +2437,13 @@ static __isl_give isl_set *extract_context(__isl_keep isl_schedule_node *node,
  * active references in the current kernel.
  */
 static int populate_array_references(struct amp_local_array_info *local,
-                                     struct amp_array_ref_group **groups, struct amp_group_data *data)
-{
+                                     struct amp_array_ref_group **groups, struct amp_group_data *data) {
     int i;
     int n;
     isl_ctx *ctx = isl_union_map_get_ctx(data->copy_sched);
 
     n = 0;
-    for (i = 0; i < local->array->n_ref; ++i)
-    {
+    for (i = 0; i < local->array->n_ref; ++i) {
         isl_union_map *umap;
         isl_map *map;
         struct amp_array_ref_group *group;
@@ -2621,8 +2453,7 @@ static int populate_array_references(struct amp_local_array_info *local,
         umap = isl_union_map_from_map(map);
         umap = isl_union_map_apply_domain(umap, isl_union_map_copy(data->copy_sched));
 
-        if (isl_union_map_is_empty(umap))
-        {
+        if (isl_union_map_is_empty(umap)) {
             isl_union_map_free(umap);
             continue;
         }
@@ -2631,8 +2462,7 @@ static int populate_array_references(struct amp_local_array_info *local,
         map = isl_map_detect_equalities(map);
 
         group = isl_calloc_type(ctx, struct amp_array_ref_group);
-        if (!group)
-        {
+        if (!group) {
             isl_map_free(map);
             return -1;
         }
@@ -2656,8 +2486,7 @@ static int populate_array_references(struct amp_local_array_info *local,
  */
 static struct amp_array_ref_group *join_groups(
     struct amp_array_ref_group *group1,
-    struct amp_array_ref_group *group2)
-{
+    struct amp_array_ref_group *group2) {
     int i;
     isl_ctx *ctx;
     struct amp_array_ref_group *group;
@@ -2694,8 +2523,7 @@ static struct amp_array_ref_group *join_groups(
  */
 static struct amp_array_ref_group *join_groups_and_free(
     struct amp_array_ref_group *group1,
-    struct amp_array_ref_group *group2)
-{
+    struct amp_array_ref_group *group2) {
     struct amp_array_ref_group *group;
 
     group = join_groups(group1, group2);
@@ -2707,12 +2535,10 @@ static struct amp_array_ref_group *join_groups_and_free(
 /* Combine all groups in "groups" into a single group and return
  * the new number of groups (1 or 0 if there were no groups to start with).
  */
-static int join_all_groups(int n, struct amp_array_ref_group **groups)
-{
+static int join_all_groups(int n, struct amp_array_ref_group **groups) {
     int i;
 
-    for (i = n - 1; i > 0; --i)
-    {
+    for (i = n - 1; i > 0; --i) {
         groups[0] = join_groups_and_free(groups[0], groups[i]);
         groups[i] = NULL;
         n--;
@@ -2726,8 +2552,7 @@ static int join_all_groups(int n, struct amp_array_ref_group **groups)
  * Additionally, set the "nr" field of each group.
  */
 static void set_array_groups(struct amp_local_array_info *array,
-                             int n, struct amp_array_ref_group **groups)
-{
+                             int n, struct amp_array_ref_group **groups) {
     int i;
 
     array->n_group = n;
@@ -2741,8 +2566,7 @@ static void set_array_groups(struct amp_local_array_info *array,
  * copy_sched.
  */
 static int accesses_overlap(struct amp_array_ref_group *group1,
-                            struct amp_array_ref_group *group2)
-{
+                            struct amp_array_ref_group *group2) {
     int disjoint;
 
     disjoint = isl_map_is_disjoint(group1->access, group2->access);
@@ -2756,8 +2580,7 @@ static int accesses_overlap(struct amp_array_ref_group *group1,
  * the dimension at position "pos" and leaves all other dimensions
  * constant.
  */
-static __isl_give isl_map *next(__isl_take isl_space *domain_space, int pos)
-{
+static __isl_give isl_map *next(__isl_take isl_space *domain_space, int pos) {
     isl_space *space;
     isl_aff *aff;
     isl_multi_aff *next;
@@ -2788,8 +2611,7 @@ static __isl_give isl_map *next(__isl_take isl_space *domain_space, int pos)
  * kernels with at least one thread identifier.
  */
 static int access_is_coalesced(struct amp_group_data *data,
-                               __isl_keep isl_union_map *access)
-{
+                               __isl_keep isl_union_map *access) {
     // #define DEBUG_ACCESS_IS_COALESCED
 
     int dim;
@@ -2828,8 +2650,7 @@ static int access_is_coalesced(struct amp_group_data *data,
     empty = isl_map_is_empty(map);
     isl_map_free(map);
 
-    if (empty < 0 || empty)
-    {
+    if (empty < 0 || empty) {
         isl_map_free(next_element);
         isl_map_free(access_map);
         return empty;
@@ -2856,8 +2677,7 @@ static int access_is_coalesced(struct amp_group_data *data,
  * (within a kernel).
  */
 static __isl_give isl_union_map *localize_access(struct amp_group_data *data,
-                                                 __isl_take isl_union_map *access)
-{
+                                                 __isl_take isl_union_map *access) {
     // #define DEBUG_LOCALIZE_ACCESS
 
     int n;
@@ -2916,8 +2736,7 @@ static __isl_give isl_union_map *localize_access(struct amp_group_data *data,
  * data->thread_depth, this result is already available in group->access.
  */
 static __isl_give isl_map *shared_access(struct amp_array_ref_group *group,
-                                         __isl_keep isl_union_map *access, struct amp_group_data *data)
-{
+                                         __isl_keep isl_union_map *access, struct amp_group_data *data) {
     isl_union_map *shared;
     if (data->shared_depth == data->thread_depth)
         return isl_map_copy(group->access);
@@ -2946,13 +2765,11 @@ static __isl_give isl_map *shared_access(struct amp_array_ref_group *group,
  * a(p) can therefore be taken to be equal to -o(p).
  */
 static isl_bool detect_strides(struct amp_array_tile *tile,
-                               __isl_keep isl_map *access)
-{
+                               __isl_keep isl_map *access) {
     int i;
     isl_bool has_strides = isl_bool_false;
 
-    for (i = 0; i < tile->n; ++i)
-    {
+    for (i = 0; i < tile->n; ++i) {
         struct amp_array_bound *bound = &tile->bound[i];
         isl_stride_info *si;
 
@@ -2988,8 +2805,7 @@ static isl_bool detect_strides(struct amp_array_tile *tile,
  * take the preimage over the scaling.
  */
 static __isl_give isl_map *remove_strides(__isl_take isl_map *access,
-                                          struct amp_array_tile *tile)
-{
+                                          struct amp_array_tile *tile) {
     int i;
     isl_space *space;
     isl_multi_aff *shift, *scale;
@@ -3000,8 +2816,7 @@ static __isl_give isl_map *remove_strides(__isl_take isl_map *access,
     space = isl_space_range(space);
     stride = isl_multi_val_zero(isl_space_copy(space));
     scale = isl_multi_aff_identity(isl_space_map_from_set(space));
-    for (i = 0; i < tile->n; ++i)
-    {
+    for (i = 0; i < tile->n; ++i) {
         struct amp_array_bound *bound = &tile->bound[i];
         isl_aff *shift_i;
         isl_val *stride_i;
@@ -3029,8 +2844,7 @@ static __isl_give isl_map *remove_strides(__isl_take isl_map *access,
  * tile->depth is initialized to the input dimension of the computed bounds.
  */
 static isl_bool can_tile(__isl_keep isl_map *access,
-                         struct amp_array_tile *tile)
-{
+                         struct amp_array_tile *tile) {
     // #define DEBUG_CAN_TILE
 
     int i;
@@ -3083,8 +2897,7 @@ static isl_bool can_tile(__isl_keep isl_map *access,
     fprintf(stderr, "@DEBUG: \n       the valid is: %d \n\n", valid);
 #endif // DEBUG_CAN_TILE
 
-    if (valid >= 0 && valid)
-    {
+    if (valid >= 0 && valid) {
         offset = isl_fixed_box_get_offset(box);
         size = isl_fixed_box_get_size(box);
 #ifdef DEBUG_CAN_TILE
@@ -3093,16 +2906,13 @@ static isl_bool can_tile(__isl_keep isl_map *access,
         fprintf(stderr, "@DEBUG: \n       in the can tile function, the  size  is: \n");
         isl_multi_val_dump(size);
 #endif // DEBUG_CAN_TILE
-        for (i = 0; i < tile->n; ++i)
-        {
+        for (i = 0; i < tile->n; ++i) {
             tile->bound[i].size = isl_multi_val_get_val(size, i);
             tile->bound[i].lb = isl_multi_aff_get_aff(offset, i);
         }
         isl_multi_aff_free(offset);
         isl_multi_val_free(size);
-    }
-    else if (!valid)
-    {
+    } else if (!valid) {
         box = isl_map_get_range_lattice_tile(access);
 #ifdef DEBUG_CAN_TILE
         fprintf(stderr, "@DEBUG: \n       get_range_lattice_tile is: \n");
@@ -3111,8 +2921,7 @@ static isl_bool can_tile(__isl_keep isl_map *access,
 
         offset = isl_fixed_box_get_offset(box);
         size = isl_fixed_box_get_size(box);
-        for (i = 0; i < tile->n; ++i)
-        {
+        for (i = 0; i < tile->n; ++i) {
             tile->bound[i].size = isl_multi_val_get_val(size, i);
             tile->bound[i].lb = isl_multi_aff_get_aff(offset, i);
         }
@@ -3124,15 +2933,13 @@ static isl_bool can_tile(__isl_keep isl_map *access,
     return valid;
 }
 
-struct amp_array_tile *amp_array_tile_free(struct amp_array_tile *tile)
-{
+struct amp_array_tile *amp_array_tile_free(struct amp_array_tile *tile) {
     int j;
 
     if (!tile)
         return NULL;
 
-    for (j = 0; j < tile->n; ++j)
-    {
+    for (j = 0; j < tile->n; ++j) {
         isl_val_free(tile->bound[j].size);
         isl_val_free(tile->bound[j].stride);
         isl_aff_free(tile->bound[j].lb);
@@ -3147,8 +2954,7 @@ struct amp_array_tile *amp_array_tile_free(struct amp_array_tile *tile)
 
 /* Create a gpu_array_tile for an array of dimension "n_index".
  */
-static struct amp_array_tile *amp_array_tile_create(isl_ctx *ctx, int n_index)
-{
+static struct amp_array_tile *amp_array_tile_create(isl_ctx *ctx, int n_index) {
     // #define DEBUG_AMP_ARRAY_TILE
 
     int i;
@@ -3165,8 +2971,7 @@ static struct amp_array_tile *amp_array_tile_create(isl_ctx *ctx, int n_index)
 
     tile->n = n_index;
 
-    for (i = 0; i < n_index; ++i)
-    {
+    for (i = 0; i < n_index; ++i) {
         tile->bound[i].size = NULL;
         tile->bound[i].lb = NULL;
         tile->bound[i].stride = NULL;
@@ -3187,8 +2992,7 @@ static struct amp_array_tile *amp_array_tile_create(isl_ctx *ctx, int n_index)
  * it does not exhibit any reuse and is considered to be coalesced.
  */
 static void report_no_reuse_and_coalesced(struct amp_ppcg_kernel *kernel,
-                                          __isl_keep isl_union_map *access)
-{
+                                          __isl_keep isl_union_map *access) {
     isl_ctx *ctx;
     isl_printer *p;
 
@@ -3248,8 +3052,7 @@ static void report_no_reuse_and_coalesced(struct amp_ppcg_kernel *kernel,
  * is single-valued as that was already tested in access_is_bijective.
  */
 static int compute_accessed_by_single_thread_depth(struct amp_group_data *data,
-                                                   __isl_keep isl_map *acc)
-{
+                                                   __isl_keep isl_map *acc) {
     int i;
     isl_space *space;
     isl_map *map;
@@ -3276,8 +3079,7 @@ static int compute_accessed_by_single_thread_depth(struct amp_group_data *data,
     acc = isl_map_domain_factor_domain(acc);
     acc = isl_map_uncurry(acc);
 
-    for (i = data->thread_depth - 1; i >= data->kernel_depth; --i)
-    {
+    for (i = data->thread_depth - 1; i >= data->kernel_depth; --i) {
         acc = isl_map_project_out(acc, isl_dim_in, i, 1);
         sv = isl_map_is_single_valued(acc);
         if (sv < 0)
@@ -3300,8 +3102,7 @@ error:
  * We perform this check by equating these dimensions to parameters.
  */
 static int access_is_bijective(struct amp_group_data *data,
-                               __isl_keep isl_map *access)
-{
+                               __isl_keep isl_map *access) {
     int res;
     int dim;
     isl_set *par;
@@ -3338,8 +3139,7 @@ static int access_is_bijective(struct amp_group_data *data,
  * unrolling is required.
  */
 static int check_requires_unroll(struct amp_group_data *data,
-                                 __isl_keep isl_map *access, int force_private)
-{
+                                 __isl_keep isl_map *access, int force_private) {
     int bijective;
 
     if (force_private)
@@ -3421,8 +3221,7 @@ static int check_requires_unroll(struct amp_group_data *data,
  * on the thread indices.
  */
 static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
-                                          struct amp_array_ref_group *group, struct amp_group_data *data)
-{
+                                          struct amp_array_ref_group *group, struct amp_group_data *data) {
     // #define DEBUG_COMPUTE_GROUP_BOUNDS_CORE
 
     isl_ctx *ctx = isl_space_get_ctx(group->array->space);
@@ -3476,8 +3275,7 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     fprintf(stderr, "@DEBUG: \n       the coalesced is: %d \n", coalesced);
 #endif // DEBUG_COMPUTE_GROUP_BOUNDS_CORE
     // if (!no_reuse || !coalesced)
-    if (1)
-    {
+    if (1) {
         group->shared_tile = amp_array_tile_create(ctx, group->array->n_index);
         acc = shared_access(group, access, data);
 #ifdef DEBUG_COMPUTE_GROUP_BOUNDS_CORE
@@ -3524,8 +3322,7 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         isl_map_free(acc);
     }
 
-    if (r < 0 || (!force_private && (!use_private || no_reuse)))
-    {
+    if (r < 0 || (!force_private && (!use_private || no_reuse))) {
         isl_union_map_free(access);
         return r;
     }
@@ -3584,14 +3381,11 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
  * of the first kernel dimension, i.e., data->kernel_depth.
  */
 static int compute_tile_depth(struct amp_group_data *data,
-                              struct amp_array_tile *tile)
-{
+                              struct amp_array_tile *tile) {
     int i, j;
 
-    for (j = tile->depth - 1; j >= data->kernel_depth; --j)
-    {
-        for (i = 0; i < tile->n; ++i)
-        {
+    for (j = tile->depth - 1; j >= data->kernel_depth; --j) {
+        for (i = 0; i < tile->n; ++i) {
             isl_aff *lb;
             isl_aff *shift;
 
@@ -3616,15 +3410,13 @@ static int compute_tile_depth(struct amp_group_data *data,
  * The dimension beyond "depth" are assumed not to affect the tile,
  * so they can simply be dropped.
  */
-static int tile_adjust_depth(struct amp_array_tile *tile, int depth)
-{
+static int tile_adjust_depth(struct amp_array_tile *tile, int depth) {
     int i;
 
     if (tile->depth == depth)
         return 0;
 
-    for (i = 0; i < tile->n; ++i)
-    {
+    for (i = 0; i < tile->n; ++i) {
         tile->bound[i].lb = isl_aff_drop_dims(tile->bound[i].lb,
                                               isl_dim_in, depth, tile->depth - depth);
         if (!tile->bound[i].lb)
@@ -3649,8 +3441,7 @@ static int tile_adjust_depth(struct amp_array_tile *tile, int depth)
  * outer schedule dimensions.
  */
 static isl_stat tile_set_depth(struct amp_group_data *data,
-                               struct amp_array_tile *tile)
-{
+                               struct amp_array_tile *tile) {
     if (tile_adjust_depth(tile, compute_tile_depth(data, tile)) < 0)
         return isl_stat_error;
 
@@ -3664,12 +3455,10 @@ static isl_stat tile_set_depth(struct amp_group_data *data,
  * then set group->min_depth to data->thread_depth.
  */
 static int set_depth(struct amp_group_data *data,
-                     struct amp_array_ref_group *group)
-{
+                     struct amp_array_ref_group *group) {
     group->min_depth = data->thread_depth;
 
-    if (group->shared_tile)
-    {
+    if (group->shared_tile) {
         if (tile_set_depth(data, group->shared_tile) < 0)
             return -1;
         if (group->shared_tile->depth < group->min_depth)
@@ -3684,8 +3473,7 @@ static int set_depth(struct amp_group_data *data,
  * Return 0 on success and -1 on error.
  */
 static int compute_group_bounds(struct amp_ppcg_kernel *kernel,
-                                struct amp_array_ref_group *group, struct amp_group_data *data)
-{
+                                struct amp_array_ref_group *group, struct amp_group_data *data) {
 
     if (!group)
         return -1;
@@ -3716,16 +3504,13 @@ static int group_writes(struct amp_ppcg_kernel *kernel,
                         int (*overlap)(struct amp_array_ref_group *group1,
                                        struct amp_array_ref_group *group2),
                         int compute_bounds,
-                        struct amp_group_data *data)
-{
+                        struct amp_group_data *data) {
     int i, j;
     int any_merge;
 
-    for (i = 0; i < n; i += !any_merge)
-    {
+    for (i = 0; i < n; i += !any_merge) {
         any_merge = 0;
-        for (j = n - 1; j > i; --j)
-        {
+        for (j = n - 1; j > i; --j) {
             if (!groups[i]->write && !groups[j]->write)
                 continue;
 
@@ -3758,8 +3543,7 @@ static int group_writes(struct amp_ppcg_kernel *kernel,
  */
 static int group_overlapping_writes(struct amp_ppcg_kernel *kernel,
                                     int n, struct amp_array_ref_group **groups,
-                                    struct amp_group_data *data)
-{
+                                    struct amp_group_data *data) {
     return group_writes(kernel, n, groups, &accesses_overlap, 0, data);
 }
 
@@ -3767,8 +3551,7 @@ static int group_overlapping_writes(struct amp_ppcg_kernel *kernel,
  * the outermost min(group1->min_depth, group2->min_depth) loops.
  */
 static int depth_accesses_overlap(struct amp_array_ref_group *group1,
-                                  struct amp_array_ref_group *group2)
-{
+                                  struct amp_array_ref_group *group2) {
     int depth;
     int dim;
     int empty;
@@ -3792,8 +3575,7 @@ static int depth_accesses_overlap(struct amp_array_ref_group *group1,
 /* Compute the size of the tile specified by "tile"
  * in number of elements and return the result.
  */
-static __isl_give isl_val *amp_array_tile_size(struct amp_array_tile *tile)
-{
+static __isl_give isl_val *amp_array_tile_size(struct amp_array_tile *tile) {
     int i;
     isl_val *size;
 
@@ -3812,8 +3594,7 @@ static __isl_give isl_val *amp_array_tile_size(struct amp_array_tile *tile)
  * the sizes of the tiles specified by "tile1" and "tile2"?
  */
 static int smaller_tile(struct amp_array_tile *tile,
-                        struct amp_array_tile *tile1, struct amp_array_tile *tile2)
-{
+                        struct amp_array_tile *tile1, struct amp_array_tile *tile2) {
     int smaller;
     isl_val *size, *size1, *size2;
 
@@ -3837,8 +3618,7 @@ static int smaller_tile(struct amp_array_tile *tile,
  * Return the updated number of groups.
  */
 static int group_depth_overlapping_writes(struct amp_ppcg_kernel *kernel,
-                                          int n, struct amp_array_ref_group **groups, struct amp_group_data *data)
-{
+                                          int n, struct amp_array_ref_group **groups, struct amp_group_data *data) {
     return group_writes(kernel, n, groups, &depth_accesses_overlap, 1, data);
 }
 
@@ -3860,19 +3640,16 @@ static int group_depth_overlapping_writes(struct amp_ppcg_kernel *kernel,
  */
 static int group_common_shared_memory_tile(struct amp_ppcg_kernel *kernel,
                                            struct amp_array_info *array, int n,
-                                           struct amp_array_ref_group **groups, struct amp_group_data *data)
-{
+                                           struct amp_array_ref_group **groups, struct amp_group_data *data) {
     int i, j;
     int recompute_overlap = 0;
     int any_merge;
 
-    for (i = 0; i < n; i += !any_merge)
-    {
+    for (i = 0; i < n; i += !any_merge) {
         any_merge = 0;
         if (!groups[i]->shared_tile)
             continue;
-        for (j = n - 1; j > i; --j)
-        {
+        for (j = n - 1; j > i; --j) {
             struct amp_array_ref_group *group;
 
             if (!groups[j]->shared_tile)
@@ -3882,13 +3659,11 @@ static int group_common_shared_memory_tile(struct amp_ppcg_kernel *kernel,
                 continue;
 
             group = join_groups(groups[i], groups[j]);
-            if (compute_group_bounds(kernel, group, data) < 0)
-            {
+            if (compute_group_bounds(kernel, group, data) < 0) {
                 amp_array_ref_group_free(group);
                 return -1;
             }
-            if (!group->shared_tile || !smaller_tile(group->shared_tile, groups[i]->shared_tile, groups[j]->shared_tile))
-            {
+            if (!group->shared_tile || !smaller_tile(group->shared_tile, groups[i]->shared_tile, groups[j]->shared_tile)) {
                 amp_array_ref_group_free(group);
                 continue;
             }
@@ -3933,8 +3708,7 @@ static int group_common_shared_memory_tile(struct amp_ppcg_kernel *kernel,
  * are required to be mapped to private memory.
  */
 static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
-                                      struct amp_local_array_info *local, struct amp_group_data *data)
-{
+                                      struct amp_local_array_info *local, struct amp_group_data *data) {
     // #define DEBUG_AMP_GROUP_ARRAY_REFERENCES
 
     int i;
@@ -3948,8 +3722,7 @@ static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
 
     n = populate_array_references(local, groups, data);
 
-    if (local->array->has_compound_element)
-    {
+    if (local->array->has_compound_element) {
         n = join_all_groups(n, groups);
         set_array_groups(local, n, groups);
         return 0;
@@ -3969,8 +3742,7 @@ static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
 
 #ifdef DEBUG_AMP_GROUP_ARRAY_REFERENCES
     fprintf(stderr, "@DEBUG: \n       the group information in in end of amp_group_array_references is on the below:\n");
-    for (i = 0; i < n; ++i)
-    {
+    for (i = 0; i < n; ++i) {
         fprintf(stderr, "           in amp_group_array_references structs, the index is %d.           the group is:\n", i);
         amp_array_ref_group_dump(groups[i]);
         fprintf(stderr, "\n\n");
@@ -3989,8 +3761,7 @@ static int amp_group_array_references(struct amp_ppcg_kernel *kernel,
  * the contraction "contraction" and return the result.
  */
 static __isl_give isl_union_map *expand(__isl_take isl_union_map *s,
-                                        __isl_keep isl_union_pw_multi_aff *contraction)
-{
+                                        __isl_keep isl_union_pw_multi_aff *contraction) {
     contraction = isl_union_pw_multi_aff_copy(contraction);
     s = isl_union_map_preimage_domain_union_pw_multi_aff(s, contraction);
     return s;
@@ -4001,8 +3772,7 @@ static __isl_give isl_union_map *expand(__isl_take isl_union_map *s,
  * equalities in this relation.
  */
 static __isl_give isl_union_map *prefix_with_equalities(
-    __isl_keep isl_schedule_node *node)
-{
+    __isl_keep isl_schedule_node *node) {
     isl_union_map *schedule;
 
     schedule = isl_schedule_node_get_prefix_schedule_relation(node);
@@ -4020,8 +3790,7 @@ static __isl_give isl_union_map *prefix_with_equalities(
  * in turn.
  */
 int amp_group_references(struct amp_ppcg_kernel *kernel,
-                         __isl_keep isl_schedule_node *node)
-{
+                         __isl_keep isl_schedule_node *node) {
     // #define DEBUG_AMP_GROUP_REFERENCES
 
     int i;
@@ -4067,13 +3836,10 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
     contraction = isl_union_pw_multi_aff_copy(kernel->contraction);
     data.host_sched = expand(data.host_sched, contraction);
     data.shared_sched = expand(data.shared_sched, contraction);
-    if (data.thread_depth == data.shared_depth)
-    {
+    if (data.thread_depth == data.shared_depth) {
         isl_union_map_free(data.copy_sched);
         data.copy_sched = isl_union_map_copy(data.shared_sched);
-    }
-    else
-    {
+    } else {
         data.copy_sched = expand(data.copy_sched, contraction);
     }
     data.thread_sched = expand(data.thread_sched, contraction);
@@ -4087,8 +3853,7 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
 
     // compute_privatization(&data, kernel);
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         r = amp_group_array_references(kernel, &kernel->array[i], &data);
         if (r < 0)
             break;
@@ -4115,15 +3880,13 @@ int amp_group_references(struct amp_ppcg_kernel *kernel,
  */
 static __isl_give isl_schedule_node *amp_add_copies_group(
     struct amp_ppcg_kernel *kernel, struct amp_array_ref_group *group,
-    __isl_take isl_schedule_node *node, int read)
-{
+    __isl_take isl_schedule_node *node, int read) {
     // #define DEBUG_AMP_ADD_COPIES_GROUP
 
     enum ppcg_group_access_type type;
 
     type = amp_array_ref_group_type(group);
-    if (type == ppcg_access_shared)
-    {
+    if (type == ppcg_access_shared) {
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
         fprintf(stderr, "@DEBUG: \n       the shared (amp_add_copies_group) : group->array is:\n");
         amp_array_info_dump(group->array);
@@ -4145,16 +3908,13 @@ static __isl_give isl_schedule_node *amp_add_copies_group(
  * back there on output.
  */
 static __isl_give isl_schedule_node *amp_add_copies(struct amp_ppcg_kernel *kernel,
-                                                    __isl_take isl_schedule_node *node)
-{
+                                                    __isl_take isl_schedule_node *node) {
     int i, j;
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *array = &kernel->array[i];
 
-        for (j = 0; j < array->n_group; ++j)
-        {
+        for (j = 0; j < array->n_group; ++j) {
             struct amp_array_ref_group *group = array->groups[j];
 
             node = amp_add_copies_group(kernel, group, node, 1);
@@ -4170,8 +3930,7 @@ static __isl_give isl_schedule_node *amp_add_copies(struct amp_ppcg_kernel *kern
 }
 
 static void create_amp_kernel_var(isl_ctx *ctx, struct amp_array_ref_group *group,
-                                  struct amp_ppcg_kernel_var *var)
-{
+                                  struct amp_ppcg_kernel_var *var) {
     int j;
     struct amp_array_tile *tile;
     isl_printer *p;
@@ -4188,23 +3947,19 @@ static void create_amp_kernel_var(isl_ctx *ctx, struct amp_array_ref_group *grou
 
     var->size = isl_vec_alloc(ctx, group->array->n_index);
 
-    for (j = 0; j < group->array->n_index; ++j)
-    {
+    for (j = 0; j < group->array->n_index; ++j) {
         var->size = isl_vec_set_element_val(var->size, j, isl_val_copy(tile->bound[j].size));
     }
 }
 
-static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel)
-{
+static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel) {
     int i, j, n;
 
     n = 0;
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *array = &kernel->array[i];
 
-        for (j = 0; j < array->n_group; ++j)
-        {
+        for (j = 0; j < array->n_group; ++j) {
             // struct amp_array_ref_group *group = array->groups[j];
             // enum ppcg_group_access_type type;
 
@@ -4221,12 +3976,10 @@ static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel)
     kernel->n_var = n;
 
     n = 0;
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *array = &kernel->array[i];
 
-        for (j = 0; j < array->n_group; ++j)
-        {
+        for (j = 0; j < array->n_group; ++j) {
             struct amp_array_ref_group *group = array->groups[j];
             enum ppcg_group_access_type type;
 
@@ -4247,8 +4000,7 @@ static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel)
  * in the domains of the access relations in "prog".
  */
 static __isl_give isl_union_set *accessed_by_domain(
-    __isl_take isl_union_set *domain, struct amp_prog *prog)
-{
+    __isl_take isl_union_set *domain, struct amp_prog *prog) {
     isl_union_map *access;
     isl_union_set *arrays;
 
@@ -4262,8 +4014,7 @@ static __isl_give isl_union_set *accessed_by_domain(
 
 /* Wrapper around ppcg_kernel_free for use as a isl_id_set_free_user callback.
  */
-static void amp_ppcg_kernel_free_wrap(void *user)
-{
+static void amp_ppcg_kernel_free_wrap(void *user) {
     struct amp_ppcg_kernel *kernel = user;
 
     amp_ppcg_kernel_free(kernel);
@@ -4273,8 +4024,7 @@ static void amp_ppcg_kernel_free_wrap(void *user)
  * with X the kernel sequence number "kernel_id".
  */
 static __isl_give isl_schedule_node *group_statements(
-    __isl_take isl_schedule_node *node, int kernel_id)
-{
+    __isl_take isl_schedule_node *node, int kernel_id) {
     char buffer[20];
     isl_id *id;
 
@@ -4289,8 +4039,7 @@ static __isl_give isl_schedule_node *group_statements(
 /* Replace "pa" by the zero function defined over the universe domain
  * in the space of "pa".
  */
-static __isl_give isl_pw_aff *set_universally_zero(__isl_take isl_pw_aff *pa)
-{
+static __isl_give isl_pw_aff *set_universally_zero(__isl_take isl_pw_aff *pa) {
     isl_space *space;
     isl_aff *zero;
 
@@ -4317,16 +4066,14 @@ static __isl_give isl_pw_aff *set_universally_zero(__isl_take isl_pw_aff *pa)
  * there is no harm in printing the array sizes as zero.
  */
 static void localize_bounds(struct amp_ppcg_kernel *kernel,
-                            __isl_keep isl_set *host_domain)
-{
+                            __isl_keep isl_set *host_domain) {
     int i, j;
     isl_set *context;
 
     context = isl_set_copy(host_domain);
     context = isl_set_params(context);
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *local = &kernel->array[i];
         isl_multi_pw_aff *bound;
         int n_index;
@@ -4337,8 +4084,7 @@ static void localize_bounds(struct amp_ppcg_kernel *kernel,
         n_index = local->array->n_index;
         bound = isl_multi_pw_aff_copy(local->array->bound);
 
-        for (j = 0; j < n_index; ++j)
-        {
+        for (j = 0; j < n_index; ++j) {
             isl_pw_aff *pwaff;
             int empty;
 
@@ -4371,8 +4117,7 @@ static void localize_bounds(struct amp_ppcg_kernel *kernel,
  * affect the decision on whether to place a reference group
  * in private, shared or global memory.
  */
-static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
-{
+static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel) {
     // #define DEBUG_CHECK_SHRED_MEMORY_BOUND
 
     int i, j;
@@ -4381,12 +4126,10 @@ static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
     // left = isl_val_int_from_si(kernel->ctx,kernel->options->max_shared_memory);
     left = isl_val_int_from_si(kernel->ctx, 40960000);
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *local = &kernel->array[i];
 
-        for (j = 0; j < local->n_group; ++j)
-        {
+        for (j = 0; j < local->n_group; ++j) {
             struct amp_array_ref_group *group;
             enum ppcg_group_access_type type;
 
@@ -4403,8 +4146,7 @@ static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
             isl_val_dump(left);
 #endif // DEBUG_CHECK_SHRED_MEMORY_BOUND
 
-            if (isl_val_le(size, left))
-            {
+            if (isl_val_le(size, left)) {
                 left = isl_val_sub(left, size);
                 continue;
             }
@@ -4423,18 +4165,15 @@ static void check_shared_memory_bound(struct amp_ppcg_kernel *kernel)
  * that is not mapped to private or shared memory as
  * accessing the corresponding global device memory.
  */
-static void mark_data_copy_arrays(struct amp_ppcg_kernel *kernel)
-{
+static void mark_data_copy_arrays(struct amp_ppcg_kernel *kernel) {
     int i, j;
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *local = &kernel->array[i];
 
         if (local->global)
             continue;
-        for (j = 0; j < local->n_group; ++j)
-        {
+        for (j = 0; j < local->n_group; ++j) {
             if (amp_array_ref_group_tile(local->groups[j]))
                 continue;
 
@@ -4468,8 +4207,7 @@ static void mark_data_copy_arrays(struct amp_ppcg_kernel *kernel)
  */
 static __isl_give isl_multi_aff *strided_tile(
     struct amp_array_tile *tile, __isl_keep isl_space *space,
-    __isl_keep isl_multi_aff *insert_array)
-{
+    __isl_keep isl_multi_aff *insert_array) {
     int i;
     isl_ctx *ctx;
     isl_multi_aff *shift;
@@ -4485,8 +4223,7 @@ static __isl_give isl_multi_aff *strided_tile(
     stride = isl_multi_val_zero(space2);
     shift = isl_multi_aff_zero(isl_space_copy(space));
 
-    for (i = 0; i < tile->n; ++i)
-    {
+    for (i = 0; i < tile->n; ++i) {
         struct amp_array_bound *bound = &tile->bound[i];
         isl_val *stride_i;
         isl_aff *shift_i;
@@ -4528,8 +4265,7 @@ static __isl_give isl_multi_aff *strided_tile(
  *
  *	t = a - lb(i)
  */
-static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group)
-{
+static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group) {
     // #define DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     int i;
@@ -4540,8 +4276,7 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     char *local_name;
 
     tile = amp_array_ref_group_tile(group);
-    if (!tile)
-    {
+    if (!tile) {
         // fprintf(stderr, "@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling        function, the tile of group is null !!! please notice! the group is:         \n");
         fprintf(stderr, "@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
         amp_array_ref_group_dump(group);
@@ -4581,8 +4316,7 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
 #endif // DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
 
     lb = isl_multi_aff_zero(space);
-    for (i = 0; i < tile->n; ++i)
-    {
+    for (i = 0; i < tile->n; ++i) {
         isl_aff *lb_i = isl_aff_copy(tile->bound[i].lb);
         lb = isl_multi_aff_set_aff(lb, i, lb_i);
     }
@@ -4619,18 +4353,15 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
 
 /* Compute a tiling for all the array reference groups in "kernel".
  */
-static void compute_group_tilings(struct amp_ppcg_kernel *kernel)
-{
+static void compute_group_tilings(struct amp_ppcg_kernel *kernel) {
     // #define DEBUG_COMPUTE_GROUP_TILINGS
 
     int i, j;
 
-    for (i = 0; i < kernel->n_array; ++i)
-    {
+    for (i = 0; i < kernel->n_array; ++i) {
         struct amp_local_array_info *array = &kernel->array[i];
 
-        for (j = 0; j < array->n_group; ++j)
-        {
+        for (j = 0; j < array->n_group; ++j) {
             amp_array_ref_group_compute_tiling(array->groups[j]);
 
 #ifdef DEBUG_COMPUTE_GROUP_TILINGS
@@ -4853,8 +4584,7 @@ __isl_give isl_schedule_node *amp_create_kernel(struct amp_prog *prog, __isl_tak
  *      当rate = 0,或者取整后的partition_val = 0时，left_flag应该为false
  *      当rate = 100,right_flag应该为false.(目前这种情况直接返回原始调度了,不会进行迭代空间划分.所以不会出现这种情况)
  */
-struct amp_basic_set
-{
+struct amp_basic_set {
     // the left basic set and its flag
     isl_basic_set *left;
     isl_bool left_flag;
@@ -4872,8 +4602,7 @@ struct amp_basic_set
 /**
  * @brief 初始化amp_basic_set
  */
-__isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx)
-{
+__isl_give struct amp_basic_set *amp_basic_set_init(__isl_keep isl_ctx *ctx) {
     if (!ctx)
         goto error;
     struct amp_basic_set *amp_bset = isl_calloc_type(ctx, struct amp_basic_set);
@@ -4892,12 +4621,10 @@ error:
     return NULL;
 }
 
-void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset)
-{
+void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset) {
     if (!amp_bset)
         fprintf(stderr, "\n@WARN:       amp_basic_set is NULL, maybe it is freed early! \n");
-    else
-    {
+    else {
         isl_basic_set_free(amp_bset->left);
         isl_basic_set_free(amp_bset->right);
         free(amp_bset);
@@ -4907,8 +4634,7 @@ void amp_basic_set_free(__isl_take struct amp_basic_set *amp_bset)
 /**
  * @brief 计算自动混合精度依据rate进行划分,rate是高精度所占百分比的数值，rate = 50,即高精度占比是50/100(50%)
  */
-__isl_give isl_aff *amp_get_partition_aff(__isl_keep isl_ctx *ctx, __isl_take isl_aff *x, __isl_take isl_aff *y, int rate)
-{
+__isl_give isl_aff *amp_get_partition_aff(__isl_keep isl_ctx *ctx, __isl_take isl_aff *x, __isl_take isl_aff *y, int rate) {
     // #define DEBUG_AMP_GET_PARTITION_AFF
 
     // x,y,rate 是否有异常值
@@ -4957,8 +4683,7 @@ error:
 /*
  * check_loop_index_constraint_on_bound_pair function's  data
  */
-struct check_date
-{
+struct check_date {
     isl_size **constraint_array;
     isl_size dims;
 
@@ -4971,8 +4696,7 @@ struct check_date
 static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constraint *lower,
                                                           __isl_take isl_constraint *upper,
                                                           __isl_take isl_basic_set *bset,
-                                                          void *user)
-{
+                                                          void *user) {
     // #define DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
     struct check_date *data = (struct check_date *)user;
     isl_size nvar;
@@ -4991,18 +4715,15 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
     if (nvar < 0)
         goto error;
 
-    for (isl_size i = 0; i < data->current_dim; i++)
-    {
-        if (isl_constraint_involves_dims(lower, isl_dim_set, i, 1) == 1)
-        {
+    for (isl_size i = 0; i < data->current_dim; i++) {
+        if (isl_constraint_involves_dims(lower, isl_dim_set, i, 1) == 1) {
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
             fprintf(stderr, "@DEBUG: \n       The lower bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
             data->constraint_array[data->current_dim][i] = 1;
         }
 
-        if (isl_constraint_involves_dims(upper, isl_dim_set, i, 1) == 1)
-        {
+        if (isl_constraint_involves_dims(upper, isl_dim_set, i, 1) == 1) {
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
             fprintf(stderr, "@DEBUG: \n       The upper bound of %d dimension depends on the %d dimension .\n\n", data->current_dim, i);
 #endif // DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
@@ -5013,14 +4734,11 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
 #ifdef DEBUG_CHECK_LOOP_INDEX_CONSTRAINT_ON_BOUND_PAIR
     // 打印出来数组。
     fprintf(stderr, "@DEBUG: \n       the loop index constraint array is:\n");
-    for (int i = 0; i < data->dims; i++)
-    {
+    for (int i = 0; i < data->dims; i++) {
         // 打印表头
-        if (i == 0)
-        {
+        if (i == 0) {
             fprintf(stderr, "dim\\dim\t");
-            for (int j = 0; j < data->dims; j++)
-            {
+            for (int j = 0; j < data->dims; j++) {
                 fprintf(stderr, "%d \t", j);
             }
             fprintf(stderr, "\n");
@@ -5028,8 +4746,7 @@ static isl_stat check_loop_index_constraint_on_bound_pair(__isl_take isl_constra
         // 打印列号
         fprintf(stderr, "%d \t", i);
         // 打印内容
-        for (int j = 0; j < data->dims; j++)
-        {
+        for (int j = 0; j < data->dims; j++) {
             fprintf(stderr, "%d \t", data->constraint_array[i][j]);
         }
         fprintf(stderr, "\n");
@@ -5054,27 +4771,21 @@ error:
  * @brief   通过struct check_date中的数据，依据划分策略，获得划分的维度.
  * @note    目前的迭代空间划分的维度选择的策略是：循环索引不被内层循环索引所依赖的最外层循环对应的维度.
  */
-isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date *data)
-{
-    for (isl_size i = 0; i < data->dims; i++)
-    {
+isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date *data) {
+    for (isl_size i = 0; i < data->dims; i++) {
         isl_bool upper_flag = isl_bool_true;
         isl_bool lower_flag = isl_bool_true;
-        for (isl_size j = i + 1; j < data->dims; j++)
-        {
+        for (isl_size j = i + 1; j < data->dims; j++) {
             // 先判断其后面循环的上界是否依赖于当前的第i维度
-            if (data->constraint_array[i][j] == 1)
-            {
+            if (data->constraint_array[i][j] == 1) {
                 upper_flag = isl_bool_false;
             }
             // 再判断其后面循环的下界是否依赖于当前的第i维度
-            if (data->constraint_array[j][i] == 1)
-            {
+            if (data->constraint_array[j][i] == 1) {
                 lower_flag = isl_bool_false;
             }
         }
-        if (upper_flag && lower_flag)
-        {
+        if (upper_flag && lower_flag) {
             return i;
         }
     }
@@ -5087,8 +4798,7 @@ isl_size get_split_dim_by_loop_index_constraint_relation_array(struct check_date
  */
 static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
                                     __isl_take isl_constraint *upper, __isl_take isl_basic_set *bset,
-                                    void *user)
-{
+                                    void *user) {
     // #define DEBUG_SPLIT_ON_BOUND_PAIR
     struct amp_basic_set *amp_bset = (struct amp_basic_set *)user;
     isl_aff *aff_x, *aff_y;
@@ -5125,8 +4835,7 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
     isl_val_dump(lower_val);
     fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
-    if (!isl_val_eq(upper_val, lower_val))
-    {
+    if (!isl_val_eq(upper_val, lower_val)) {
         isl_val *scale_val = isl_val_div(lower_val, upper_val);
 #ifdef DEBUG_SPLIT_ON_BOUND_PAIR
         fprintf(stderr, "@DEBUG: \n       统一系数时的缩放因子是： \n");
@@ -5134,9 +4843,7 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
         fprintf(stderr, "\n");
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
         aff_y = isl_aff_scale_val(aff_y, scale_val);
-    }
-    else
-    {
+    } else {
         isl_val_free(upper_val);
         isl_val_free(lower_val);
     }
@@ -5164,14 +4871,12 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
 #endif // DEBUG_SPLIT_ON_BOUND_PAIR
 
     // 如果amp_partition_val为0，那么左分支（第一个迭代空间）应该为空
-    if (isl_aff_plain_is_zero(amp_partition_val))
-    {
+    if (isl_aff_plain_is_zero(amp_partition_val)) {
         amp_bset->left_flag = isl_bool_false;
         amp_bset->right_flag = isl_bool_true;
     }
     // 如果amp_partition_val不为0，那么左分支和左分支两个迭代空间均为非空
-    else
-    {
+    else {
         amp_bset->left_flag = isl_bool_true;
         amp_bset->right_flag = isl_bool_true;
         /**
@@ -5216,11 +4921,10 @@ static isl_stat split_on_bound_pair(__isl_take isl_constraint *lower,
         fprintf(stderr, "       拼接后,去除切平面或者切线上的点前.右分支的仿射表达式是： \n");
         isl_aff_dump(aff_right);
         fprintf(stderr, "\n");
-#endif // DEBUG_SPLIT_ON_BOUND_PAIR
+#endif // DEBUG_SPLIT_ON_BOUND_PAIR \
        // 如果左右分支包含了相同的元素，则右分支去掉这个元素(取反策略必有)
         isl_set *common_set = isl_aff_eq_set(isl_aff_copy(aff_left), isl_aff_copy(aff_right));
-        if (!isl_set_is_empty(common_set))
-        {
+        if (!isl_set_is_empty(common_set)) {
             // 初始化来获取与aff_right同空间的常数为1的仿射表达式
             isl_space *space = isl_aff_get_domain_space(aff_right);
             isl_val *coeff_val = isl_constraint_get_coefficient_val(lower, isl_dim_set, amp_bset->split_dim);
@@ -5286,14 +4990,12 @@ error:
 /**
  * @brief 根据划分比例，将基本语句basic_set的迭代空间划分成两个迭代空间，并返回
  */
-static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int rate)
-{
+static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ctx, __isl_take isl_basic_set *basic_set, int rate) {
     // #define DEBUG_PARTITION_BY_RATE
     struct amp_basic_set *amp_bset = amp_basic_set_init(ctx);
 
     // 检查basic_set不能为空
-    if (!basic_set)
-    {
+    if (!basic_set) {
         goto error;
     }
 
@@ -5309,11 +5011,9 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
      * @brief   初始化数组为0
      * @note    对角线必须是0，表示自己对自己不存在依赖关系.
      */
-    for (isl_size i = 0; i < bset_dims; i++)
-    {
+    for (isl_size i = 0; i < bset_dims; i++) {
         loop_index_constraint_relation_array[i] = isl_alloc_array(ctx, isl_size, bset_dims);
-        for (isl_size j = 0; j < bset_dims; j++)
-        {
+        for (isl_size j = 0; j < bset_dims; j++) {
             loop_index_constraint_relation_array[i][j] = 0;
         }
     }
@@ -5327,11 +5027,9 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
      * @brief   遍历每一个维度的上界和下界的约束，检查当前维度的索引是否对前面的循环索引存在依赖关系.
      * @note    如果检查异常结束（也即除去该维度后的isl_basic_set为空）则提示一个ERROR.
      */
-    for (isl_size i = 1; i < bset_dims; i++)
-    {
+    for (isl_size i = 1; i < bset_dims; i++) {
         check_date->current_dim = i;
-        if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, i, &check_loop_index_constraint_on_bound_pair, check_date) < 0)
-        {
+        if (isl_basic_set_foreach_bound_pair(basic_set, isl_dim_set, i, &check_loop_index_constraint_on_bound_pair, check_date) < 0) {
             fprintf(stderr, "\n\033[31m@ERROR:\n       check_loop_index_constraint_on_bound_pair meets some ERRORS!!!  \033[0m\n\n");
         }
     }
@@ -5339,14 +5037,11 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
 #ifdef DEBUG_PARTITION_BY_RATE
     // 打印出来数组。
     fprintf(stderr, "@DEBUG: \n       the loop index constraint array is:\n");
-    for (int i = 0; i < bset_dims; i++)
-    {
+    for (int i = 0; i < bset_dims; i++) {
         // 打印表头
-        if (i == 0)
-        {
+        if (i == 0) {
             fprintf(stderr, "dim\\dim\t");
-            for (int j = 0; j < bset_dims; j++)
-            {
+            for (int j = 0; j < bset_dims; j++) {
                 fprintf(stderr, "%d \t", j);
             }
             fprintf(stderr, "\n");
@@ -5354,8 +5049,7 @@ static __isl_give struct amp_basic_set *partition_by_rate(__isl_keep isl_ctx *ct
         // 打印列号
         fprintf(stderr, "%d \t", i);
         // 打印内容
-        for (int j = 0; j < bset_dims; j++)
-        {
+        for (int j = 0; j < bset_dims; j++) {
             fprintf(stderr, "%d \t", loop_index_constraint_relation_array[i][j]);
         }
         fprintf(stderr, "\n");
@@ -5397,8 +5091,7 @@ error:
 /**
  * @brief 存储迭代空间划分后的左右两个迭代空间(isl_union_set)以及划分的比例
  */
-struct amp_domain
-{
+struct amp_domain {
     isl_ctx *ctx;
     int rate;
 
@@ -5415,8 +5108,7 @@ struct amp_domain
  * else the dimension of the set > 0, we split the set, and then store it(which is splited) in left and right.
  * @note if the dimension of the set < 0, that means errors.
  */
-static isl_stat repartition_set(__isl_take isl_set *set, void *user)
-{
+static isl_stat repartition_set(__isl_take isl_set *set, void *user) {
     struct amp_domain *amp_domain = (struct amp_domain *)user;
     isl_size dims;
 
@@ -5425,18 +5117,14 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
     if (dims < 0)
         goto error;
     // 如果dims为0，说明语句就是简单的赋值，且不在循环体中，则将其同时放到左右两个子迭代空间中
-    else if (dims == 0)
-    {
+    else if (dims == 0) {
         // 如果右分支的迭代空间为NULL,说明还未放入,直接转换即可
-        if (!amp_domain->right)
-        {
+        if (!amp_domain->right) {
             // 如果左分支（第一个迭代空间）存在.
             if (amp_domain->rate > 0)
                 amp_domain->left = isl_union_set_from_set(set);
             amp_domain->right = isl_union_set_from_set(set);
-        }
-        else
-        {
+        } else {
             // 如果左分支（第一个迭代空间）存在.
             if (amp_domain->rate > 0)
                 amp_domain->left = isl_union_set_add_set(amp_domain->left, set);
@@ -5444,31 +5132,26 @@ static isl_stat repartition_set(__isl_take isl_set *set, void *user)
         }
     }
     // 如果dims大于0，说明语句循环体中，则将其切分后放到左右两个子迭代空间中
-    else
-    {
+    else {
         /**
          * 获取basic_set_list及其大小,遍历所有的basic_set并对其进行划分
          * @note 由于之前已经压缩过，对所有语句size均应为1).
          */
         isl_basic_set_list *bset_list = isl_set_get_basic_set_list(set);
         isl_size sizes = isl_basic_set_list_n_basic_set(bset_list);
-        for (isl_size i = 0; i < sizes; i++)
-        {
+        for (isl_size i = 0; i < sizes; i++) {
             isl_basic_set *bset = isl_basic_set_list_get_basic_set(bset_list, i);
             // 根据rate将当前的一个basic_set划分成left和right两个，也即将该语句的迭代空间分成2个
             struct amp_basic_set *amp_bset = partition_by_rate(amp_domain->ctx, bset, amp_domain->rate);
             /** 根据情况进行判断，添加该语句的迭代空间到amp_domain中. */
-            if (!amp_domain->right)
-            {
+            if (!amp_domain->right) {
                 // 如果左分支（第一个迭代空间）存在.
                 if (amp_bset->left_flag)
                     amp_domain->left = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
                 // 如果右分支（第二个迭代空间）存在，目前一定是存在的.
                 if (amp_bset->right_flag)
                     amp_domain->right = isl_union_set_from_set(isl_set_from_basic_set(isl_basic_set_copy(amp_bset->right)));
-            }
-            else
-            {
+            } else {
                 // 如果左分支（第一个迭代空间）存在.
                 if (amp_bset->left_flag)
                     amp_domain->left = isl_union_set_add_set(amp_domain->left, isl_set_from_basic_set(isl_basic_set_copy(amp_bset->left)));
@@ -5492,8 +5175,7 @@ error:
  * @brief AMP重新调度，首先是拆分isl_union_set变成上下两个部分合在一起的isl_union_set_list;然后插入不同的mark标签结点;再然后根据插入的mark结点，生成对应的kernel,并删去多余的mark结点.
  *           最后在将修改好的调度树，转换成调度(isl_schedule)返回,如果在这里遇到问题，则返回最原始的调度。
  */
-__isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched, int rate)
-{
+__isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched, int rate) {
     // #define DEBUG_AMP_RESCHEDULE
     isl_schedule *schedule;
     isl_schedule_node *node;
@@ -5507,8 +5189,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
     // 获取domain(isl_union_set)
     domain = isl_schedule_get_domain(sched);
 
-    for (int d = 0; d < division_number; d++)
-    {
+    for (int d = 0; d < division_number; d++) {
         // 初始化amp_domian()
         struct amp_domain *amp_domain;
         amp_domain = isl_alloc_array(ctx, struct amp_domain, 1);
@@ -5518,8 +5199,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         amp_domain->right = NULL;
 
         // 遍历所有的语句，对其迭代空间进行划分.
-        if (isl_union_set_foreach_set(domain, repartition_set, amp_domain) < 0)
-        {
+        if (isl_union_set_foreach_set(domain, repartition_set, amp_domain) < 0) {
             fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because isl_union_set_foreach_set() < 0 !!! \033[0m\n\n");
             goto error;
         }
@@ -5535,8 +5215,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
         // 将filters插入到根节点
         node = isl_schedule_node_child(node, 0);
         node = isl_schedule_node_insert_sequence(node, filters);
-        if (!node)
-        {
+        if (!node) {
             fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because insert sequence filed !!!  Now will return the original schedule !!! \033[0m\n\n");
             goto error;
         }
@@ -5573,8 +5252,7 @@ __isl_give isl_schedule *amp_reschedule(__isl_keep isl_ctx *ctx, amp_prog *prog,
 
     // 根据amp_lower标记,生成amp_kernel（自动混合精度计算核心）
     node = amp_create_kernel(prog, node);
-    if (!node)
-    {
+    if (!node) {
         fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the node (the amp_create_kernel function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
         goto error;
     }
@@ -5602,8 +5280,7 @@ error:
 }
 
 // Compute a new schedule based on the sched
-__isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched)
-{
+__isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *prog, __isl_take isl_schedule *sched) {
     int rate;
     isl_schedule *schedule;
 
@@ -5612,23 +5289,20 @@ __isl_give isl_schedule *amp_schedule_again(__isl_keep isl_ctx *ctx, amp_prog *p
         goto error;
 
     // 如果不进行自动混合精度,则直接返回原始的调度即可.--这个检查是多余的,主要是检查一下,确保参数的正确性
-    if (!prog->scop->options->automatic_mixed_precision)
-    {
+    if (!prog->scop->options->automatic_mixed_precision) {
         return sched;
     }
 
     // 获取混合精度的比例
     rate = (int)prog->scop->options->automatic_mixed_precision_rate;
     // 如果比例不合法(小于0或者大于99),则不进行混合精度,将原始调度返回.
-    if (rate < 0 || rate > 99)
-    {
+    if (rate < 0 || rate > 99) {
         fprintf(stderr, "\n\033[31m@WARNING:\n       automatic mixed precision rate < 0 / rate > 99 , that is incorrect. \033[0m\n\n");
         return sched;
     }
 
     schedule = amp_reschedule(ctx, prog, sched, rate);
-    if (!schedule)
-    {
+    if (!schedule) {
         fprintf(stderr, "\n\033[31m@ERROR:\n       There are some errors because the schedule (the amp_reschedule function returned) is NULL, Now will return the original schedule !!! \033[0m\n\n");
         goto error;
     }
