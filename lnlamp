@@ -1,0 +1,402 @@
+#!/bin/bash
+# 获取lnlamp脚本所在的目录
+lnlamp_dir=$(cd `dirname $0`; pwd)
+# echo "lnlamp所在的路径是:" $lnlamp_dir
+# 获取执行时所在的目录
+Rootpath=`pwd`
+# echo "当前的工作路径是:" $Rootpath
+cd $Rootpath
+
+
+# 如果没有输入参数,直接退出,并提示用户lnlamp的用法
+if [ $# -eq 0 ];
+then
+    echo "Usage:   lnlamp <c_source_file> [options...]";
+    echo "Example: lnlamp hello.c";
+    echo "Note:    For detailed usage, please see 'lnlamp -h' ";
+    exit 1;
+fi;
+# 如果捕获到CTRL+C,则直接退出
+trap "onCtrlC" SIGINT
+function onCtrlC () {
+    rm -f ____lnlamp_*
+    exit
+}
+
+
+
+####################################################################
+#         根据抛物线上的三个点,求解抛物线的三个参数(即求方程组的解)         #
+#################################################################### 
+# 初始化方程组的系数和极值点为全局变量
+equ_a=0.00
+equ_b=0.00
+equ_c=0.00
+extremeValue=0.00
+# 求解方程组
+function Solving_Equations(){
+    if [ $# -ne 6 ];
+    then
+        echo "一共有$#个参数, 不是六个,请检查后重试.";
+        return 1;
+    fi
+    # 将(x1,y1)、(x2,y2)、(x3,y3)统一保留小数点后十位数字.
+    local x1=$(echo ${1} | awk '{ printf("%.10f",$1); }');
+    local y1=$(echo ${2} | awk '{ printf("%.10f",$1); }');
+    local x2=$(echo ${3} | awk '{ printf("%.10f",$1); }');
+    local y2=$(echo ${4} | awk '{ printf("%.10f",$1); }');
+    local x3=$(echo ${5} | awk '{ printf("%.10f",$1); }');
+    local y3=$(echo ${6} | awk '{ printf("%.10f",$1); }');
+    # echo $x1 $y1 $x2 $y2 $x3 $y3
+    
+    # 计算y=ax^2+bx+c中的三个系数(equ_a、equ_b、equ_c).
+    # b=  ( (($3*$3)-($5*$5))*($2-$4)-(($1*$1)-($3*$3))*($4-$6) )/( (($3*$3)-($5*$5))*($1-$3)-(($1*$1)-($3*$3))*($3-$5) );
+    equ_b=$(echo $x1 $y1 $x2 $y2 $x3 $y3 | awk '{ printf("%.10f", ( (($3*$3)-($5*$5))*($2-$4)-(($1*$1)-($3*$3))*($4-$6) )/( (($3*$3)-($5*$5))*($1-$3)-(($1*$1)-($3*$3))*($3-$5) )  );}');
+    # a= ( $2-$4-$5*($1-$3) )/( ($1*$1)-($3*$3) );
+    equ_a=$(echo $x1 $y1 $x2 $y2 $equ_b | awk '{ printf("%.10f", ( $2-$4-$5*($1-$3) )/( ($1*$1)-($3*$3) )  );}');
+    # c= $2-$3*$1*$1-$4*$1;
+    equ_c=$(echo $x1 $y1 $equ_a $equ_b | awk '{ printf("%.10f", $2-$3*$1*$1-$4*$1  );}');
+    # extV= -$2/(2*$1);
+    extremeValue=$(echo $equ_a $equ_b | awk '{ printf("%.10f", -$2/(2*$1)  );}');
+    # echo $equ_a $equ_b $equ_c $extremeValue
+    return 0;
+}
+
+
+
+# TODO: 添加计时方式 (-t|--timing-type) 的设置
+timing_type=0
+# TODO: 添加profiling时的输入文件 (-i|--input) 的设置
+input="input.txt"
+# TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
+rate_array=(25 50 75)
+# TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
+VERBOSE=""
+CC="gcc"
+CFLAGS="-g -O3"
+LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
+PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
+EXIT_FLAGS="-lm"
+
+# 源文件参数
+src_args=()
+# 参数计数器
+parameter_count=0
+# 是否指定target_file的Flags
+specify_output_flag=0
+target_file=""
+# c++ Flags
+cpp_flag=0
+# 临时profiling的后缀
+prf_suf=""
+# Step1: 先处理一下输入.
+while [[ $# -gt 0 ]];
+do
+    # 处理输入的参数
+    case $1 in
+        *.c|*.cc|*.cpp)
+            parameter_count=`expr $parameter_count + 1`
+            if [ $specify_output_flag -eq 1 ];
+            then
+                target_file=$1
+                # 指定完target-file，则flag设为2.
+                specify_output_flag=2
+                shift
+            else
+                if [ -e $1 ];
+                then
+                    echo "YES" > /dev/null
+                else
+                    echo "lnlamp: error: $1 : No such file or directory"
+                    echo "lnlamp: fatal error: no input files"
+                    echo "Compilation terminated."
+                    echo ""
+                    echo "Please use option '-h | --help' to quickly use lnlamp."
+                    echo ""
+                    exit
+                fi
+                src_args+=("$1")
+                shift
+            fi
+            ;;
+        -s|--specify-output)
+            parameter_count=`expr $parameter_count + 1`
+            if [ $parameter_count -eq 1 ]
+            then
+                echo ""
+                echo "Please put source file before option '-s'"
+                echo ""
+                echo "Template:"
+                echo "    lnlamp <source-file> -s <target-file>"
+                echo ""
+                echo "    if <target-file> is empty, output 'source_lnlamp.c' or 'source_lnlamp.cpp' by default"
+                echo ""	
+                exit
+            fi
+            # 如果需要指定target-file，则flag设为1
+            specify_output_flag=1
+            shift
+            ;;
+        -v|--version)
+            parameter_count=`expr $parameter_count + 1`
+            echo "The installation position is: $lnlamp_dir"
+            echo "Profiling  Configuration  is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} source_file ${EXIT_FLAGS}"
+            echo
+            echo "The lnlamp version is 0.1.0"
+            echo "For more information, please see https://github.com/sheenisme/lnlamp.git"
+            shift
+            exit
+            ;;
+        -h|--help)
+            parameter_count=`expr $parameter_count + 1`
+            echo ""
+            echo "Usage: lnlamp file [options] ..."
+            echo ""
+            echo "Options:"
+            echo "    -s | --specify-output    specify the target file"
+            echo "    -v | --version           lnlamp compiler version"
+            echo ""
+            echo "Examples:"
+            echo "    lnlamp hellp.c -s hello_lnlamp.c"
+            echo ""
+            echo "Template:"
+            echo "    lnlamp <source-file> [Options] <target-file>"
+            echo ""
+            echo "Looking forward to more options ..."
+            echo ""
+            shift
+            exit
+            ;;
+        *)
+            parameter_count=`expr $parameter_count + 1`
+            if [ $specify_output_flag -eq 1 ];
+            then
+                src_args+=("$1")
+                target_file=$1
+                specify_output_flag=2
+                shift
+            else
+                echo ""
+                echo "Sorry, the '$1' operation is invalid!"
+                echo ""
+                echo "Please use option '-h | --help' to quickly use lnlamp"
+                echo ""
+                shift
+                exit   
+            fi
+    esac
+    # 输入参数的处理over,下面再处理一下其他的一些参数.
+
+    # 检查src_args长度是否为1,目前暂只支持一个源文件的自动混合精度
+    if [ ${#src_args[@]} -ne 1 ];
+    then
+        echo "lnlamp: error: Parameter input error"
+        echo "lnlamp: fatal error: input files is more than 1 "
+        echo "Compilation terminated."
+        echo ""
+        echo "Please use option '-h | --help' to quickly use lnlamp."
+        echo ""
+        exit
+    fi
+
+    # 设置target_file
+    if [ $specify_output_flag -le 1 ];
+    then
+        # 如果设置了'-s',但是没有设置'target_file',则进行警告
+        if [ $specify_output_flag -eq 1 ];
+        then
+            echo "lnlamp: warning: missing target-file name after '-s', taregt-file will be reset to <source>_lnlamp.c or <source>_lnlamp.cpp"
+        fi
+        for src in ${src_args[@]}; 
+        do  
+            kernel=${src##*/}
+            kernel=${kernel%%.*}
+		    target_file="${kernel}_lnlamp.c"
+        done
+    fi
+
+    # 自动判断后缀类型
+    for src in ${src_args[@]}; 
+    do
+        case $src in
+            *.c)
+                echo "c files " > /dev/null
+                cpp_flag=0
+                CC="gcc"
+                prf_suf=".c"
+                ;;
+            *.cc)
+                echo "c++ files " > /dev/null
+                cpp_flag=1
+                CC="g++"
+                target_file="${target_file}c"
+                prf_suf=".cc"
+                ;;
+            *.cpp)
+                echo "c++ files " > /dev/null
+                cpp_flag=2
+                CC="g++"
+                target_file="${target_file}pp"
+                prf_suf=".cpp"
+                ;;
+            *)
+                echo "lnlamp: warning: unsupported file suffixes, please note. "
+        esac      
+    done
+    PARAMETER_READY=true
+done
+# 释放specify_output_flag
+unset specify_output_flag
+
+
+
+#  Step2: 如果输入解析成功，那么开始进行Profiling
+time_array=()
+echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]}."
+if [[ ${PARAMETER_READY} = true ]]; 
+then
+    # PPCG Codegen
+    ppcg --target c --no-automatic-mixed-precision $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision $src_args -o ____lnlamp_ppcg__${prf_suf} "
+    fi
+    ppcg --target c -R ${rate_array[0]} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
+    fi
+    ppcg --target c -R ${rate_array[1]} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[1]} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} "
+    fi
+    ppcg --target c -R ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
+    fi
+
+    # 编译
+    ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Compiling meets errors."
+        echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg__.exe ${EXIT_FLAGS}"
+    fi
+    ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[0]}__${prf_suf} -o  ____lnlamp_${rate_array[0]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Compiling meets errors."
+        echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[0]}__${prf_suf} -o  ____lnlamp_${rate_array[0]}__.exe  ${EXIT_FLAGS}"
+    fi
+    ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[1]}__${prf_suf} -o  ____lnlamp_${rate_array[1]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Compiling meets errors."
+        echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[1]}__${prf_suf} -o  ____lnlamp_${rate_array[1]}__.exe  ${EXIT_FLAGS}"
+    fi
+    ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[2]}__${prf_suf} -o  ____lnlamp_${rate_array[2]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Compiling meets errors."
+        echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[2]}__${prf_suf} -o  ____lnlamp_${rate_array[2]}__.exe  ${EXIT_FLAGS} "
+    fi
+    # 删除PPCG CodeGen的源文件
+    rm -f ____lnlamp_*__${prf_suf}
+
+    # 设置Timing
+    if [ $timing_type -eq 1 ];
+    then 
+        timing="time -f %e"
+        echo "lnlamp: message: The Timing CMD is: '${timing}' ."
+    else
+        timing=""
+    fi
+
+    # Profiling (default input file is input.txt)
+    if [ -e $input ];
+    then
+        echo "lnlamp: message: Profiling will use the $input file ."
+        { ${timing} ./____lnlamp_ppcg__.exe             < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+        { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+        { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+        { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+    else
+        echo "lnlamp: message: Profiling will not use any input file(which means the program does not require any input)."
+        { ${timing} ./____lnlamp_ppcg__.exe             > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+        { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+        { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+        { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+    fi
+    # 删除程序的可执行文件
+    rm -f ____lnlamp_*_.exe
+
+    # 根据Timing_type获取时间
+    if [ $timing_type -eq 1 ];
+    then
+        # 说明程序的输出不是计时结果,删除____lnlamp_output_*
+        rm -f ____lnlamp_output_*
+        time_upper=`head -1 ____lnlamp_timing_upper | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_0=`head -1 ____lnlamp_timing_mix_0 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_1=`head -1 ____lnlamp_timing_mix_1 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_2=`head -1 ____lnlamp_timing_mix_2 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+
+        # 删除程序的计时结果文件
+        rm -f ____lnlamp_timing_*
+    else
+        # 说明程序的输出是计时结果，则删除____lnlamp_timing_*
+        rm -f ____lnlamp_timing_*
+        time_upper=`head -1 ____lnlamp_output_upper | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_0=`head -1 ____lnlamp_output_mix_0 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_1=`head -1 ____lnlamp_output_mix_1 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+        time_mix_2=`head -1 ____lnlamp_output_mix_2 | sed -ne 's/[^0-9]*\([0-9]*\.[0-9]*\)[^0-9]*/\1/p'`
+
+        # 删除程序的计时结果文件
+        rm -f ____lnlamp_output_*
+    fi
+    echo "lnlamp: message: Profiling times is: $time_upper $time_mix_0 $time_mix_1 $time_mix_2"
+    time_array+=( $(echo $time_upper $time_mix_0 | awk '{ printf("%.10f", $1-$2 ); }') );
+    time_array+=( $(echo $time_upper $time_mix_1 | awk '{ printf("%.10f", $1-$2 ); }') );
+    time_array+=( $(echo $time_upper $time_mix_2 | awk '{ printf("%.10f", $1-$2 ); }') );
+
+    # 解方程组,求解抛物线的三个参数
+    Solving_Equations ${rate_array[0]} ${time_array[0]}  ${rate_array[1]}  ${time_array[1]}  ${rate_array[2]}  ${time_array[2]}
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Solving_Equations meets errors"
+        echo "lnlamp: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]}  ${rate_array[1]}  ${time_array[1]}  ${rate_array[2]}  ${time_array[2]} "
+        echo "lnlamp: The wrong result is: $equ_a $equ_b $equ_c $extremeValue"
+    fi
+    # echo "lnlamp: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]}  ${rate_array[1]}  ${time_array[1]}  ${rate_array[2]}  ${time_array[2]} "
+    echo "lnlamp: message: Solving equations's Result is: $equ_a $equ_b $equ_c $extremeValue"
+fi
+
+
+
+# Step3: 根据抛物线和Profiling结果,分类并生成最终结果.
+if [ $(echo "$extremeValue < 0" | bc) -eq 1 ];
+then
+    ppcg --target c -R 0 $src_args -o ${target_file} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen(Rate=0) meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R 0 $src_args -o ${target_file}."
+    fi
+    echo ""
+    echo "The performance of lnlamp programs decreases monotonically with increasing Rate, so the Rate 0 is the best. "
+    echo "We have automatically generated a mixed precision program (${target_file})at this Ratio. "
+    echo ""
+elif [ $(echo "$extremeValue > 99" | bc) -eq 1 ];
+then
+    echo ""
+    echo "The performance of the lnlamp program rises monotonically with increasing Rate, so the orgion program is best. "
+    echo "The program is not suitable for mixed precision optimization at the loop nesting level. "
+    echo ""
+else
+    final_rate=$(echo $extremeValue | cut -d '.' -f1);
+    ppcg --target c -R $final_rate $src_args -o ${target_file} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: PPCG Codegen(Final-rate=$final_rate) meets errors."
+        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R $final_rate $src_args -o ${target_file}."
+    fi
+    echo ""
+    echo "The performance of the lnlamp program shows a quadratic relationship with the Rate ( pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c )."
+    echo "So the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
+    echo "We have automatically generated a mixed precision program (${target_file}) at the Rate=$final_rate. "
+    echo ""
+fi

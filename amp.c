@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <isl/ast_type.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2129,7 +2130,6 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     access = isl_union_set_wrapped_domain_map(domain);
     access = isl_union_map_reverse(access);
     access = isl_union_map_coalesce(access);
-
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP
     fprintf(stderr, "@DEBUG: \n       before the isl_schedule_node_from_extension(access), the access is: \n");
     isl_union_map_dump(access);
