@@ -91,6 +91,8 @@ target_file=""
 cpp_flag=0
 # 临时profiling的后缀
 prf_suf=""
+# Profiling的次数(不包含数据预热）
+frequency=3
 # Step1: 先处理一下输入.
 while [[ $# -gt 0 ]];
 do
@@ -325,7 +327,6 @@ then
     fi
 
     # Profiling (default input file is input.txt)
-    frequency=3
     if [ -e $input ];
     then
         if [ $DEBUG_TYPE -eq 1 ];then
@@ -530,49 +531,128 @@ then
     if [ $DEBUG_TYPE -eq 1 ];then
         echo "lnlamp: message: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}"
         echo "lnlamp: message: Solving equations's Result is: ( pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue ) "
-        echo ""
     fi
 fi
+unset time_array
 
 
-
-# Step3: 根据抛物线和Profiling结果,分类并生成最终结果.
+# Step3: 根据抛物线和Profiling结果,确定最合适的Rate值
+# 3.1 先确定最合适的Rate的可能取值
+best_rate=()
 # 如果开口向下且对称轴小于0、或者开头向上且对称轴大于99,那么就是收益模型单调下降.
 if ([ $(echo "$extremeValue < 0" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue > 99" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
 then
-    ppcg --target c -R 0 $src_args -o ${target_file} > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "lnlamp: error: PPCG Codegen(Rate=0) meets errors."
-        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R 0 $src_args -o ${target_file}."
-        exit
-    fi
-    echo "The performance of lnlamp programs decreases monotonically with increasing Rate, so the Rate 0 is the best. "
-    echo "We have automatically generated a mixed precision program (${target_file})at this Ratio. "
-    echo ""
+    best_rate+=( 0 )
 # 如果开口向下且对称轴大于99、或者开头向上且对称轴小于0,那么就是收益模型单调上升.
 elif ([ $(echo "$extremeValue > 99" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue < 0" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
 then
-    echo "The performance of the lnlamp program rises monotonically with increasing Rate, so the original program is probably the best. "
-    echo "The program is not suitable for mixed precision optimization at the loop nesting level. "
-    echo ""
+    best_rate+=( 99 )
 # 如果对称轴介于0和99中间，且开头是向下的话,那么对称轴附近的比例值就是结果
 elif [ $(echo "$equ_a < 0" | bc) -eq 1 ];
 then
-    final_rate=$(echo $extremeValue | cut -d '.' -f1);
-    ppcg --target c -R $final_rate $src_args -o ${target_file} > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "lnlamp: error: PPCG Codegen(Final-rate=$final_rate) meets errors."
-        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R $final_rate $src_args -o ${target_file}."
-        exit
-    fi
-    echo "The performance of the lnlamp program shows a quadratic relationship with the Rate ( pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c )."
-    echo "So the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
-    echo "We have automatically generated a mixed precision program (${target_file}) at the Rate=$final_rate. "
-    echo ""
+    best_rate+=( $(echo $extremeValue | cut -d '.' -f1) );
 # 如果对称轴介于0和99中间，且开头是向上的话，那么同样也不适合做混合精度.
 else
-    echo "The performance of the lnlamp program shows a quadratic relationship with the Rate ( pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c )."
-    echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. "
-    echo "We recommend that you could use our modified ppcg code auto-generation tool to assist you in mixing precision optimization."
-    echo ""
+    best_rate+=( 0 )
+    best_rate+=( 99 )
 fi
+# 3.2 对可能的取值做Profiling
+best_incomes=()
+for rate in ${best_rate[@]}; 
+do
+    # # PPCG CodeGen
+    # ppcg --target c -R $rate $src_args -o ____lnlamp_${rate}__${prf_suf} > /dev/null 2>&1
+    # if [ $? -ne 0 ]; then
+    #     echo "lnlamp: error: PPCG Codegen meets errors at the best rate profiling."
+    #     echo "lnlamp: error: ppcg --target c -R $rate $src_args -o ____lnlamp_${rate}__${prf_suf} "
+    #     exit
+    # fi
+    # # 编译
+    # ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate}__${prf_suf} -o  ____lnlamp_${rate}__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+    # if [ $? -ne 0 ]; then
+    #     echo "lnlamp: error: Compiling meets errors at the best rate profiling."
+    #     echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate}__${prf_suf} -o  ____lnlamp_${rate}__.exe ${EXIT_FLAGS}"
+    #     exit
+    # fi
+    # # 删除PPCG CodeGen的源文件
+    # rm -f ____lnlamp_${rate}__${prf_suf}
+
+    # # 对该rate做Profiling
+    # if [ -e $input ];
+    # then
+    #     { ${timing} ./____lnlamp_${rate}__.exe < $input > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
+    #     { ${timing} ./____lnlamp_${rate}__.exe < $input > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
+    #     for ((i=1; i<$frequency; i++))
+    #     do
+    #         { ${timing} ./____lnlamp_${rate}__.exe < $input >> ____lnlamp_output_best_${rate} ; } 2>> ____lnlamp_timing_best_${rate}
+    #     done
+    # else
+    #     { ${timing} ./____lnlamp_${rate}__.exe > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
+    #     { ${timing} ./____lnlamp_${rate}__.exe > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
+    #     for ((i=1; i<$frequency; i++))
+    #     do
+    #         { ${timing} ./____lnlamp_${rate}__.exe >> ____lnlamp_output_best_${rate} ; } 2>> ____lnlamp_timing_best_${rate}
+    #     done
+    # fi
+    # # 删除程序的可执行文件
+    # rm -f ____lnlamp_${rate}__.exe
+
+    # # 根据Timing_type获取时间
+    # if [ $timing_type -eq 1 ];
+    # then
+    #     # 说明程序的输出不是计时结果,删除____lnlamp_output_best_${rate}
+    #     rm -f ____lnlamp_output_best_${rate}
+    #     rows=$(awk 'END{print NR}' ____lnlamp_timing_best_${rate});
+    #     if [ $frequency -eq $rows ];
+    #     then 
+    #         expr=0.0;
+    #         while read n; 
+    #         do
+    #             expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+    #         done < ____lnlamp_timing_best_${rate};
+    #         time_avg=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+    #     else
+    #         echo "lnlamp: error: Parsing profile time meets errors at the best rate profiling."
+    #         exit
+    #     fi
+    #     # 删除程序的计时结果文件
+    #     rm -f ____lnlamp_timing_best_${rate}
+    # else
+    #     # 说明程序的输出是计时结果，则删除____lnlamp_timing_best_${rate}
+    #     rm -f ____lnlamp_timing_best_${rate}
+    #     rows=$(awk 'END{print NR}' ____lnlamp_output_best_${rate});
+    #     if [ $frequency -eq $rows ];
+    #     then 
+    #         expr=0.0;
+    #         while read n; 
+    #         do
+    #             expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+    #         done < ____lnlamp_output_best_${rate};
+    #         time_avg=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+    #     else
+    #         echo "lnlamp: error: Parsing profile time meets errors at the best rate profiling."
+    #         exit
+    #     fi
+    #     # 删除程序的计时结果文件
+    #     rm -f ____lnlamp_output_best_${rate}
+    # fi
+    income=( $(echo $rate $equ_a $equ_b $equ_c| awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
+    if [ $DEBUG_TYPE -eq 1 ];then
+        echo "lnlamp: message: The best rate(${rate}) profiling time is: $time_avg, the income is: $income. "
+    fi
+    best_incomes+=$income
+    unset income
+done
+
+
+
+# # Step4: 分类并生成最终结果.
+# if [ ${#best_incomes[@]} -ne 1 ];
+# then
+#     
+# else
+#     for time in ${best_incomes[@]}; 
+#     do
+# 
+#     done
+# fi
