@@ -71,7 +71,7 @@ timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
 # TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(25 50 75)
+rate_array=(10 51 91)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
 CC="gcc"
@@ -92,7 +92,7 @@ cpp_flag=0
 # 临时profiling的后缀
 prf_suf=""
 # Profiling的次数(不包含数据预热）
-frequency=3
+frequency=5
 # Step1: 先处理一下输入.
 while [[ $# -gt 0 ]];
 do
@@ -254,7 +254,10 @@ unset specify_output_flag
 
 
 
+
 #  Step2: 如果输入解析成功，那么开始进行Profiling
+# 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
+start=`date +%s%N`
 time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
     echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]}."
@@ -534,9 +537,13 @@ then
     fi
 fi
 unset time_array
+end=`date +%s%N`
+time_profiling=$((($end-$start)/1000000)) # 毫秒
 
 
 # Step3: 根据抛物线和Profiling结果,确定最合适的Rate值
+# 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
+start=`date +%s%N`
 # 3.1 先确定最合适的Rate的可能取值
 best_rate=()
 # 如果开口向下且对称轴小于0、或者开头向上且对称轴大于99,那么就是收益模型单调下降.
@@ -556,7 +563,7 @@ else
     best_rate+=( 0 )
     best_rate+=( 99 )
 fi
-# 3.2 对可能的取值做Profiling
+# 3.2 对可能的取值做预测(推理) [也可以做Profiling(注释掉的代码部分)]
 best_incomes=()
 for rate in ${best_rate[@]}; 
 do
@@ -636,23 +643,87 @@ do
     #     # 删除程序的计时结果文件
     #     rm -f ____lnlamp_output_best_${rate}
     # fi
-    income=( $(echo $rate $equ_a $equ_b $equ_c| awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
+    # income=( $(echo $time_upper $time_avg | awk '{ printf("%.10f", $1-$2 ); }') );
+    # 
+    income=( $(echo $rate $equ_a $equ_b $equ_c | awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: The best rate(${rate}) profiling time is: $time_avg, the income is: $income. "
+        echo "lnlamp: message: The predicted time benefit is: $income s, when rate =${rate}. "
     fi
-    best_incomes+=$income
+    best_incomes+=( $income )
     unset income
 done
+end=`date +%s%N`
+time_inference=$((($end-$start)/1000000)) # 毫秒
+# 打印耗时情况
+if [ $DEBUG_TYPE -eq 1 ];then
+    echo "lnlamp: message: The profiling time-consuming is: $time_profiling ms, the inference time-consuming is: $time_inference ms. "
+    echo ""
+fi
 
 
 
-# # Step4: 分类并生成最终结果.
-# if [ ${#best_incomes[@]} -ne 1 ];
-# then
-#     
-# else
-#     for time in ${best_incomes[@]}; 
-#     do
-# 
-#     done
-# fi
+# Step4: 打印最终结果.
+if [ ${#best_incomes[@]} -eq 1 ];
+then
+    if [ $(echo "${best_incomes[@]} > 0.0" | bc) -eq 1 ];
+    then 
+        # 如果是单调下降
+        if [ ${best_rate[@]} -eq 0 ];
+        then
+            echo "The performance of the lnlamp programs decreases monotonically with increasing Rate, so the Rate 0 is the best. "
+            # 生成最合适比例下对应的混合精度代码提供给用户
+            ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
+        # 如果是单调上升
+        elif [ ${best_rate[@]} -eq 99 ];
+        then
+            echo "The performance of the lnlamp program rises monotonically with increasing Rate(which means it isn't suitable for mixed precision optimization), so the original program is probably the best. "
+        # 如果是二次关系
+        else
+            echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
+            # 生成最合适比例下对应的混合精度代码提供给用户
+            ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
+        fi
+    else
+        echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+    fi
+else
+    max_income=0.0
+    max_income_id=-1.0
+    # 确定一下最大收益及其对应的下标
+    for ((i=0;i<${#best_incomes[@]};i++));
+    do
+        if [ $(echo "${best_incomes[$i]} > ${max_income}" | bc) -eq 1 ];
+        then
+            max_income=${best_incomes[$i]};
+            max_income_id=$i;
+        fi
+    done
+    # 根据最大收益，确定适不适合做混合精度
+    if [ $(echo "${max_income} > 0.0" | bc) -eq 1 ];
+    then
+        echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate (${best_rate[$max_income_id]}) is probably the most appropriate ratio. "  
+        # 生成最合适比例下对应的混合精度代码提供给用户
+        ppcg --target c -R ${best_rate[$max_income_id]} $src_args -o ${target_file} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors at the end."
+            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} $src_args -o ${target_file}."
+            exit
+        fi
+        echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
+    else
+        echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+    fi
+fi
+echo ""
