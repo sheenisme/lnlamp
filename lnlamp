@@ -1,12 +1,13 @@
 #!/bin/bash
-
 # 获取lnlamp脚本所在的目录
 lnlamp_dir=$(cd `dirname $0`; pwd)
 # echo "lnlamp所在的路径是:" $lnlamp_dir
-# 获取执行时所在的目录
+# 获取执行脚本时所在的目录
 Rootpath=`pwd`
 # echo "当前的工作路径是:" $Rootpath
 cd $Rootpath
+
+
 
 # 如果没有输入参数,直接退出,并提示用户lnlamp的用法
 if [ $# -eq 0 ];
@@ -252,7 +253,6 @@ do
 done
 # 释放specify_output_flag
 unset specify_output_flag
-
 
 
 
@@ -554,7 +554,7 @@ then
         rm -f ____lnlamp_output_mix_2
     fi
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: Profiling times is: $time_upper $time_mix_0 $time_mix_1 $time_mix_2"
+        echo "lnlamp: message: Profiling times is(s): $time_upper $time_mix_0 $time_mix_1 $time_mix_2. "
     fi
     time_array+=( $(echo $time_upper $time_mix_0 | awk '{ printf("%.10f", $1-$2 ); }') );
     time_array+=( $(echo $time_upper $time_mix_1 | awk '{ printf("%.10f", $1-$2 ); }') );
@@ -569,13 +569,14 @@ then
         exit
     fi
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}"
-        echo "lnlamp: message: Solving equations's Result is: ( pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue ) "
+        echo "lnlamp: message: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}. "
+        echo "lnlamp: message: Solving equations's Result  is: pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue. "
     fi
 fi
 unset time_array
 end=`date +%s%N`
 time_profiling=$((($end-$start)/1000000)) # 毫秒
+
 
 
 # Step3: 根据抛物线和Profiling结果,确定最合适的Rate值
@@ -604,87 +605,9 @@ fi
 best_incomes=()
 for rate in ${best_rate[@]}; 
 do
-    # # PPCG CodeGen
-    # ppcg --target c -R $rate $src_args -o ____lnlamp_${rate}__${prf_suf} > /dev/null 2>&1
-    # if [ $? -ne 0 ]; then
-    #     echo "lnlamp: error: PPCG Codegen meets errors at the best rate profiling."
-    #     echo "lnlamp: error: ppcg --target c -R $rate $src_args -o ____lnlamp_${rate}__${prf_suf} "
-    #     exit
-    # fi
-    # # 编译
-    # ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate}__${prf_suf} -o  ____lnlamp_${rate}__.exe ${EXIT_FLAGS} > /dev/null 2>&1
-    # if [ $? -ne 0 ]; then
-    #     echo "lnlamp: error: Compiling meets errors at the best rate profiling."
-    #     echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate}__${prf_suf} -o  ____lnlamp_${rate}__.exe ${EXIT_FLAGS}"
-    #     exit
-    # fi
-    # # 删除PPCG CodeGen的源文件
-    # rm -f ____lnlamp_${rate}__${prf_suf}
-
-    # # 对该rate做Profiling
-    # if [ -e $input ];
-    # then
-    #     { ${timing} ./____lnlamp_${rate}__.exe < $input > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
-    #     { ${timing} ./____lnlamp_${rate}__.exe < $input > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
-    #     for ((i=1; i<$frequency; i++))
-    #     do
-    #         { ${timing} ./____lnlamp_${rate}__.exe < $input >> ____lnlamp_output_best_${rate} ; } 2>> ____lnlamp_timing_best_${rate}
-    #     done
-    # else
-    #     { ${timing} ./____lnlamp_${rate}__.exe > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
-    #     { ${timing} ./____lnlamp_${rate}__.exe > ____lnlamp_output_best_${rate} ; } 2> ____lnlamp_timing_best_${rate}
-    #     for ((i=1; i<$frequency; i++))
-    #     do
-    #         { ${timing} ./____lnlamp_${rate}__.exe >> ____lnlamp_output_best_${rate} ; } 2>> ____lnlamp_timing_best_${rate}
-    #     done
-    # fi
-    # # 删除程序的可执行文件
-    # rm -f ____lnlamp_${rate}__.exe
-
-    # # 根据Timing_type获取时间
-    # if [ $timing_type -eq 1 ];
-    # then
-    #     # 说明程序的输出不是计时结果,删除____lnlamp_output_best_${rate}
-    #     rm -f ____lnlamp_output_best_${rate}
-    #     rows=$(awk 'END{print NR}' ____lnlamp_timing_best_${rate});
-    #     if [ $frequency -eq $rows ];
-    #     then 
-    #         expr=0.0;
-    #         while read n; 
-    #         do
-    #             expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
-    #         done < ____lnlamp_timing_best_${rate};
-    #         time_avg=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
-    #     else
-    #         echo "lnlamp: error: Parsing profile time meets errors at the best rate profiling."
-    #         exit
-    #     fi
-    #     # 删除程序的计时结果文件
-    #     rm -f ____lnlamp_timing_best_${rate}
-    # else
-    #     # 说明程序的输出是计时结果,则删除____lnlamp_timing_best_${rate}
-    #     rm -f ____lnlamp_timing_best_${rate}
-    #     rows=$(awk 'END{print NR}' ____lnlamp_output_best_${rate});
-    #     if [ $frequency -eq $rows ];
-    #     then 
-    #         expr=0.0;
-    #         while read n; 
-    #         do
-    #             expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
-    #         done < ____lnlamp_output_best_${rate};
-    #         time_avg=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
-    #     else
-    #         echo "lnlamp: error: Parsing profile time meets errors at the best rate profiling."
-    #         exit
-    #     fi
-    #     # 删除程序的计时结果文件
-    #     rm -f ____lnlamp_output_best_${rate}
-    # fi
-    # income=( $(echo $time_upper $time_avg | awk '{ printf("%.10f", $1-$2 ); }') );
-    # 
     income=( $(echo $rate $equ_a $equ_b $equ_c | awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: The predicted time benefit is: $income s, when rate =${rate}. "
+        echo "lnlamp: message: The predicted time benefit  is: ${income}s, when rate =${rate}. "
     fi
     best_incomes+=( $income )
     unset income
@@ -693,7 +616,7 @@ end=`date +%s%N`
 time_inference=$((($end-$start)/1000000)) # 毫秒
 # 打印耗时情况
 if [ $DEBUG_TYPE -eq 1 ];then
-    echo "lnlamp: message: The profiling time-consuming is: $time_profiling ms, the inference time-consuming is: $time_inference ms. "
+    echo "lnlamp: message: The profiling timeConsuming is: ${time_profiling}ms, the inference timeConsuming is: ${time_inference}ms. "
     echo ""
 fi
 
