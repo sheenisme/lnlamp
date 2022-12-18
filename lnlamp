@@ -72,7 +72,7 @@ timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
 # TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(10 51 91)
+rate_array=(25 50 75)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
 CC="gcc"
@@ -80,6 +80,13 @@ CFLAGS="-g -O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
+# TODO: 配置PPCG CodeGen时的一些自定义设置
+PPCG_TILE_FLAGS="--tile --tile-size=32"
+PPCG_OPENMP_FLAGS=""
+if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
+then
+    CFLAGS="$CFLAGS -fopenmp"
+fi
 
 # 源文件参数
 src_args=()
@@ -262,15 +269,16 @@ start=`date +%s%N`
 time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
     echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]}."
+    echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
 fi
 if [[ ${PARAMETER_READY} = true ]]; 
 then
     # 并行地进行PPCG_Codegen并编译
     {
-        ppcg --target c --no-automatic-mixed-precision $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision $src_args -o ____lnlamp_ppcg__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg__.exe ${EXIT_FLAGS} > /dev/null 2>&1
@@ -282,10 +290,10 @@ then
         rm -f ____lnlamp_ppcg__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[0]} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[0]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[0]}__${prf_suf} -o  ____lnlamp_${rate_array[0]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
@@ -297,10 +305,10 @@ then
         rm -f ____lnlamp_${rate_array[0]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[1]} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[1]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[1]} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[1]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[1]}__${prf_suf} -o  ____lnlamp_${rate_array[1]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
@@ -312,10 +320,10 @@ then
         rm -f ____lnlamp_${rate_array[1]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[2]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[2]}__${prf_suf} -o  ____lnlamp_${rate_array[2]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -333,10 +341,13 @@ then
     then 
         timing="time -f %e"
         if [ $DEBUG_TYPE -eq 1 ];then
-            echo "lnlamp: message: The Timing CMD is: '${timing}' ."
+            echo "lnlamp: message: The Timing CMD is: '${timing}'."
         fi
     else
         timing=""
+        if [ $DEBUG_TYPE -eq 1 ];then
+            echo "lnlamp: message: The Timing result is in the program, which means the only output of the program is timing result."
+        fi
     fi
 
     # Profiling (default input file is input.txt)
@@ -632,10 +643,10 @@ then
         then
             echo "The performance of the lnlamp programs decreases monotonically with increasing Rate, so the Rate 0 is the best. "
             # 生成最合适比例下对应的混合精度代码提供给用户
-            ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file} > /dev/null 2>&1
+            ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo "lnlamp: error: PPCG Codegen meets errors at the end."
-                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file}."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
@@ -647,10 +658,10 @@ then
         else
             echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
             # 生成最合适比例下对应的混合精度代码提供给用户
-            ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file} > /dev/null 2>&1
+            ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo "lnlamp: error: PPCG Codegen meets errors at the end."
-                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} $src_args -o ${target_file}."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
@@ -675,10 +686,10 @@ else
     then
         echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate (${best_rate[$max_income_id]}) is probably the most appropriate ratio. "  
         # 生成最合适比例下对应的混合精度代码提供给用户
-        ppcg --target c -R ${best_rate[$max_income_id]} $src_args -o ${target_file} > /dev/null 2>&1
+        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} $src_args -o ${target_file}."
+            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
             exit
         fi
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
