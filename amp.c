@@ -3283,10 +3283,10 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
         isl_map_dump(acc);
 #endif
 
-        ok = can_tile(acc, group->shared_tile);
+        // ok = can_tile(acc, group->shared_tile);
 
-        if (ok < 0)
-            r = isl_stat_error;
+        // if (ok < 0)
+        //     r = isl_stat_error;
         // else if (!ok)
         // {
         //     struct amp_array_tile *tile = group->shared_tile;

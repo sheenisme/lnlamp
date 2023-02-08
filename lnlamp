@@ -81,7 +81,7 @@ LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/ln
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置
-PPCG_TILE_FLAGS="--tile --tile-size=32"
+PPCG_TILE_FLAGS=""
 PPCG_OPENMP_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
