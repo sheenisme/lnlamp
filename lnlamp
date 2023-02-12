@@ -72,7 +72,8 @@ timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
 # TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(25 50 75)
+rate_array=(15 30 50 70 85)
+# rate_array=(16 32 49 66 82)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
 CC="gcc"
@@ -100,7 +101,7 @@ cpp_flag=0
 # 临时profiling的后缀
 prf_suf=""
 # Profiling的次数(不包含数据预热）
-frequency=5
+frequency=10
 readonly frequency
 # Step1: 先处理一下输入.
 while [[ $# -gt 0 ]];
@@ -268,7 +269,7 @@ unset specify_output_flag
 start=`date +%s%N`
 time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
-    echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]}."
+    echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]}."
     echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
 fi
 if [[ ${PARAMETER_READY} = true ]]; 
@@ -334,6 +335,36 @@ then
         fi
         rm -f ____lnlamp_${rate_array[2]}__${prf_suf}
     }&
+    {
+        ppcg --target c -R ${rate_array[3]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors."
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[3]} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} "
+            exit
+        fi
+        ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[3]}__${prf_suf} -o  ____lnlamp_${rate_array[3]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: Compiling meets errors."
+            echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[3]}__${prf_suf} -o  ____lnlamp_${rate_array[3]}__.exe  ${EXIT_FLAGS} "
+            exit
+        fi
+        rm -f ____lnlamp_${rate_array[3]}__${prf_suf}
+    }&
+    {
+        ppcg --target c -R ${rate_array[4]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors."
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[4]} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} "
+            exit
+        fi
+        ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[4]}__${prf_suf} -o  ____lnlamp_${rate_array[4]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: Compiling meets errors."
+            echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[4]}__${prf_suf} -o  ____lnlamp_${rate_array[4]}__.exe  ${EXIT_FLAGS} "
+            exit
+        fi
+        rm -f ____lnlamp_${rate_array[4]}__${prf_suf}
+    }&
     wait
 
     # 设置Timing
@@ -392,6 +423,24 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
+        {
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            for ((i=1; i<$frequency; i++))
+            do
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+            done
+            rm -f ____lnlamp_${rate_array[3]}__.exe
+        }&
+        {
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            for ((i=1; i<$frequency; i++))
+            do
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+            done
+            rm -f ____lnlamp_${rate_array[4]}__.exe
+        }&
     else
         if [ $DEBUG_TYPE -eq 1 ];then
             echo "lnlamp: message: Profiling will not use any input file(which means the program does not require any input)."
@@ -431,6 +480,24 @@ then
                 { ${timing} ./____lnlamp_${rate_array[2]}__.exe >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
+        }&
+        {
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            for ((i=1; i<$frequency; i++))
+            do
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+            done
+            rm -f ____lnlamp_${rate_array[3]}__.exe
+        }&
+        {
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            for ((i=1; i<$frequency; i++))
+            do
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+            done
+            rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
     fi
     wait
@@ -500,6 +567,36 @@ then
             exit
         fi
         rm -f ____lnlamp_timing_mix_2
+
+        rows=$(awk 'END{print NR}' ____lnlamp_timing_mix_3);
+        if [ $frequency -eq $rows ];
+        then
+            expr=0.0;
+            while read n;
+            do
+                expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+            done < ____lnlamp_timing_mix_3;
+            time_mix_3=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+        else
+            echo "lnlamp: error: Parsing profile time meets errors."
+            exit
+        fi
+        rm -f ____lnlamp_timing_mix_3
+
+        rows=$(awk 'END{print NR}' ____lnlamp_timing_mix_4);
+        if [ $frequency -eq $rows ];
+        then
+            expr=0.0;
+            while read n;
+            do
+                expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+            done < ____lnlamp_timing_mix_4;
+            time_mix_4=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+        else
+            echo "lnlamp: error: Parsing profile time meets errors."
+            exit
+        fi
+        rm -f ____lnlamp_timing_mix_4
     else
         # 说明程序的输出是计时结果,则删除____lnlamp_timing_*
         rm -f ____lnlamp_timing_*
@@ -563,24 +660,83 @@ then
             exit
         fi
         rm -f ____lnlamp_output_mix_2
+
+        rows=$(awk 'END{print NR}' ____lnlamp_output_mix_3);
+        if [ $frequency -eq $rows ];
+        then
+            expr=0.0;
+            while read n;
+            do
+                expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+            done < ____lnlamp_output_mix_3;
+            time_mix_3=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+        else
+            echo "lnlamp: error: Parsing profile time meets errors."
+            exit
+        fi
+        rm -f ____lnlamp_output_mix_3
+
+        rows=$(awk 'END{print NR}' ____lnlamp_output_mix_4);
+        if [ $frequency -eq $rows ];
+        then
+            expr=0.0;
+            while read n;
+            do
+                expr=$(echo $expr $n | awk '{ printf("%.10f",$1+$2); }');
+            done < ____lnlamp_output_mix_4;
+            time_mix_4=$(echo $expr $frequency | awk '{ printf("%.10f",$1/$2); }');
+        else
+            echo "lnlamp: error: Parsing profile time meets errors."
+            exit
+        fi
+        rm -f ____lnlamp_output_mix_4
     fi
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: Profiling times is(s): $time_upper $time_mix_0 $time_mix_1 $time_mix_2. "
+        echo "lnlamp: message: Profiling times is(s): $time_upper $time_mix_0 $time_mix_1 $time_mix_2 $time_mix_3 $time_mix_4. "
     fi
     time_array+=( $(echo $time_upper $time_mix_0 | awk '{ printf("%.10f", $1-$2 ); }') );
     time_array+=( $(echo $time_upper $time_mix_1 | awk '{ printf("%.10f", $1-$2 ); }') );
     time_array+=( $(echo $time_upper $time_mix_2 | awk '{ printf("%.10f", $1-$2 ); }') );
+    time_array+=( $(echo $time_upper $time_mix_3 | awk '{ printf("%.10f", $1-$2 ); }') );
+    time_array+=( $(echo $time_upper $time_mix_4 | awk '{ printf("%.10f", $1-$2 ); }') );
 
-    # 解方程组,求解抛物线的三个参数
-    Solving_Equations ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}
+    # 解方程组,求解抛物线的三个参数，已更新成四个点对二次曲线拟合。
+    # Solving_Equations ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}
+    # if [ $? -ne 0 ]; then
+    #     echo "lnlamp: error: Solving_Equations meets errors"
+    #     echo "lnlamp: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}"
+    #     echo "lnlamp: The wrong result is: $equ_a $equ_b $equ_c $extremeValue"
+    #     exit
+    # fi
+    python3 $lnlamp_dir/lnlamp_internal_usage.py ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]}
     if [ $? -ne 0 ]; then
-        echo "lnlamp: error: Solving_Equations meets errors"
-        echo "lnlamp: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}"
-        echo "lnlamp: The wrong result is: $equ_a $equ_b $equ_c $extremeValue"
+        echo "lnlamp: error: Quadratic curve fitting(lnlamp_internal_usage.py) problems encountered!"
+        echo "lnlamp: Quadratic curve fitting Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} {rate_array[4]} ${time_array[4]}"
         exit
     fi
+    #如果文件不存在，创建文件夹
+    if [ ! -e "lnlamp_temp_result.txt" ]; then
+        echo "lnlamp: error: quadratic curve fitting(lnlamp_internal_usage.py) can't calculate the result!!!"
+    else
+        rows=$(awk 'END{print NR}' lnlamp_temp_result.txt);
+        if [ 4 -eq $rows ];
+        then
+            poly_coeff=()
+            while read n;
+            do
+                poly_coeff+=( $n )
+            done < lnlamp_temp_result.txt;
+            extremeValue=$(echo ${poly_coeff[3]} | awk '{ printf("%.10f",$1); }');
+            equ_a=$(echo ${poly_coeff[2]} | awk '{ printf("%.10f",$1); }');
+            equ_b=$(echo ${poly_coeff[1]} | awk '{ printf("%.10f",$1); }');
+            equ_c=$(echo ${poly_coeff[0]} | awk '{ printf("%.10f",$1); }');
+        else
+            echo "lnlamp: error: The result of the calculation in quadratic curve fitting(lnlamp_internal_usage.py) is wrong!!!"
+        fi
+    fi
+    
     if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]}. "
+        echo "lnlamp: message: Solving_Equations Parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]}. "
         echo "lnlamp: message: Solving equations's Result  is: pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue. "
     fi
 fi

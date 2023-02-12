@@ -1027,7 +1027,9 @@ amp_prog *amp_prog_alloc(__isl_take isl_ctx *ctx, struct ppcg_scop *scop) {
 /** 获得比当前精度更低的数据类型 **/
 char *amp_get_lower_precision_type(char *type) {
     // 生成更低精度的
-    if (strcmp("double", type) == 0)
+    if (strcmp("long double", type) == 0)
+        return "double";
+    else if (strcmp("double", type) == 0)
         return "float";
     else if (strcmp("float", type) == 0)
         return "int";
