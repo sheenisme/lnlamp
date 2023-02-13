@@ -20,7 +20,7 @@ def writer_txt(file, nd_name):
 
 
 # 检查python文件参数.
-if len(sys.argv) != 11:
+if len(sys.argv) != 19:
     print('参数个数为:', len(sys.argv), '个参数。')
     print('参数列表:', str(sys.argv))
     print('脚本名为：', sys.argv[0])
@@ -38,7 +38,9 @@ for i in range(1, len(sys.argv)):
     else:
         y.append(float(sys.argv[i]))
 # 检查获取的点是一一对应的
+print("rate:")
 print(x)
+print("time:")
 print(y)
 if len(x) != len(y):
     print("lnlamp: error: lnlamp_internal_usage.py 接收的参数不是一一对应的，存在问题!!!")
@@ -50,18 +52,27 @@ x_0 = [1]*m
 x_2 = matrix_n(x,2)
 x_3 = matrix_n(x,3)
 
-x_matrix = np.matrix((x_0,x,x_2),dtype=np.float)
-print(x_matrix)
+x_matrix = np.matrix((x_0,x,x_2),dtype=np.float64)
+# print(x_matrix)
 
-y_matrix = np.matrix((y),dtype=np.float)
+y_matrix = np.matrix((y),dtype=np.float64)
 y_matrix = y_matrix.T
 
 x_matrix_t = x_matrix.T
-print(x_matrix_t)
+# print(x_matrix_t)
 
+x_end=x_matrix * x_matrix_t
+b_end=x_matrix * y_matrix
+print("X系数矩阵:")
+print(x_end)
+print("B常数列矩阵:")
+print(b_end)
 out = ((x_matrix * x_matrix_t)** -1)*(x_matrix * y_matrix)
 extreme_value = (-1.0 * float(out[1]) ) / (2.0 * float(out[2]))
+print("解向量A,也即(AX=B)的解向量:")
 print(out)
+
+print("二次拟合曲线的极值点:")
 print(extreme_value)
 
 # 输出原始的点
