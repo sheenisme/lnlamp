@@ -409,99 +409,94 @@ then
         if [ $DEBUG_TYPE -eq 1 ];then
             echo "lnlamp: message: Profiling will use the $input file ."
         fi
-        TASKSET=""
-        which taskset > /dev/null
-        if [ $? -eq 0 ]; then
-                TASKSET="taskset -c "
-        fi
         {
-            { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
-            { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+            { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+            { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe < $input >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe < $input >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
             done
             rm -f ____lnlamp_ppcg__.exe
         }&
         {
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+            { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+            { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
         {
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+            { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+            { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
             done
             rm -f ____lnlamp_${rate_array[1]}__.exe
         }&
         {
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+            { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+            { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
         {
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
         wait
         {
-            { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
-            { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
         {
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+            { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+            { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
             done
             rm -f ____lnlamp_${rate_array[5]}__.exe
         }&
         {
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+            { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+            { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
         {
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+            { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+            { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
             done
             rm -f ____lnlamp_${rate_array[7]}__.exe
         }&
         {
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+            { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+            { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
             done
             rm -f ____lnlamp_${rate_array[8]}__.exe
         }&
@@ -516,93 +511,93 @@ then
             TASKSET="taskset -c "
         fi
         {
-            { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
-            { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+            { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+            { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 1 ${timing} ./____lnlamp_ppcg__.exe >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
             done
             rm -f ____lnlamp_ppcg__.exe
         }&
         {
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+            { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+            { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[0]}__.exe >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
         {
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+            { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+            { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[1]}__.exe >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
             done
             rm -f ____lnlamp_${rate_array[1]}__.exe
         }&
         {
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+            { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+            { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[2]}__.exe >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
         {
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+            { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[3]}__.exe >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
         wait
         {
-            { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
-            { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+            { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 1 ${timing} ./____lnlamp_${rate_array[4]}__.exe >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
         {
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
-            { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+            { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+            { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 2 ${timing} ./____lnlamp_${rate_array[5]}__.exe >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
             done
             rm -f ____lnlamp_${rate_array[5]}__.exe
         }&
         {
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
-            { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+            { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+            { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 3 ${timing} ./____lnlamp_${rate_array[6]}__.exe >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
         {
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
-            { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+            { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+            { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 4 ${timing} ./____lnlamp_${rate_array[7]}__.exe >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
             done
             rm -f ____lnlamp_${rate_array[7]}__.exe
         }&
         {
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
-            { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+            { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+            { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
             for ((i=1; i<$frequency; i++))
             do
-                { $TASKSET 5 ${timing} ./____lnlamp_${rate_array[8]}__.exe >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
             done
             rm -f ____lnlamp_${rate_array[8]}__.exe
         }&
