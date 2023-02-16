@@ -33,12 +33,12 @@ timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
 # TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(10 20 30 40 50 60 70 80 90)
+rate_array=(0 12 25 37 50 62 75 87 99)
 # rate_array=(16 32 49 66 82)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
 CC="gcc"
-CFLAGS="-g -O3"
+CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
