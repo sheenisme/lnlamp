@@ -427,6 +427,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
             { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
@@ -445,6 +446,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
             { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
@@ -454,7 +456,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
-        wait
         {
             { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
             { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
@@ -464,6 +465,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
             { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
@@ -482,6 +484,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
             { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
@@ -528,6 +531,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
             { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
@@ -546,6 +550,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
             { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
@@ -555,7 +560,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
-        wait
         {
             { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
             { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
@@ -565,6 +569,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
             { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
@@ -583,6 +588,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
+        wait
         {
             { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
             { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
