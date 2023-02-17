@@ -999,7 +999,6 @@ then
         echo "lnlamp: message: Quadratic curve fitting's result  is: pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue. "
     fi
 fi
-unset time_array
 end=`date +%s%N`
 time_profiling=$((($end-$start)/1000000)) # 毫秒
 
@@ -1032,6 +1031,14 @@ best_incomes=()
 for rate in ${best_rate[@]}; 
 do
     income=( $(echo $rate $equ_a $equ_b $equ_c | awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
+    # 如果推理出来的极值点恰好是Profiling时的点的话，那么直接用profiling的结果即可.
+    for ((i=0;i<${#rate_array[@]};i++));
+    do
+        if [ ${rate_array[$i]} -eq $rate ]; then
+            income=${time_array[$i]};
+            break;
+        fi
+    done
     if [ $DEBUG_TYPE -eq 1 ];then
         echo "lnlamp: message: The predicted time benefit  is: ${income}s, when rate =${rate}. "
     fi
@@ -1068,7 +1075,15 @@ then
         # 如果是单调上升
         elif [ ${best_rate[@]} -eq 99 ];
         then
-            echo "The performance of the lnlamp program rises monotonically with increasing Rate(which means it isn't suitable for mixed precision optimization), so the original program is probably the best. "
+            echo "The performance of the lnlamp program rises monotonically with increasing Rate, so the Rate 99 is the best. "
+            # 生成最合适比例下对应的混合精度代码提供给用户
+            ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
         # 如果是二次关系
         else
             echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
@@ -1109,7 +1124,7 @@ else
         fi
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
     else
-        echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+        echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
     fi
 fi
 echo ""
