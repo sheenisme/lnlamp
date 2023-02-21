@@ -37,13 +37,13 @@ rate_array=(1 12 25 37 50 62 75 87 99)
 # rate_array=(16 32 49 66 82)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
-CC="gcc"
+CC="/media/sheen/文件/ubuntu_code_data/llvm-project/llvm-install/bin/clang"
 CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置
-PPCG_TILE_FLAGS="--tile --tile-size=64"
+PPCG_TILE_FLAGS=""
 PPCG_OPENMP_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
