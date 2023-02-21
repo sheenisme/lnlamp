@@ -33,7 +33,7 @@ timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
 # TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(0 12 25 37 50 62 75 87 99)
+rate_array=(1 12 25 37 50 62 75 87 99)
 # rate_array=(16 32 49 66 82)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
@@ -43,7 +43,7 @@ LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/ln
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置
-PPCG_TILE_FLAGS=""
+PPCG_TILE_FLAGS="--tile --tile-size=64"
 PPCG_OPENMP_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
@@ -285,7 +285,7 @@ then
         ppcg --target c -R ${rate_array[2]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[2]} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[2]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[2]}__${prf_suf} -o  ____lnlamp_${rate_array[2]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -300,7 +300,7 @@ then
         ppcg --target c -R ${rate_array[3]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[3]} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[3]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[3]}__${prf_suf} -o  ____lnlamp_${rate_array[3]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -316,7 +316,7 @@ then
         ppcg --target c -R ${rate_array[4]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[4]} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[4]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[4]}__${prf_suf} -o  ____lnlamp_${rate_array[4]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -331,7 +331,7 @@ then
         ppcg --target c -R ${rate_array[5]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[5]} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[5]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[5]}__${prf_suf} -o  ____lnlamp_${rate_array[5]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -346,7 +346,7 @@ then
         ppcg --target c -R ${rate_array[6]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[6]} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[6]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[6]}__${prf_suf} -o  ____lnlamp_${rate_array[6]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -361,7 +361,7 @@ then
         ppcg --target c -R ${rate_array[7]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[7]} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[7]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[7]}__${prf_suf} -o  ____lnlamp_${rate_array[7]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -376,7 +376,7 @@ then
         ppcg --target c -R ${rate_array[8]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} ${rate_array[8]} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[8]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[8]}__${prf_suf} -o  ____lnlamp_${rate_array[8]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -956,7 +956,8 @@ then
             time_mix_6=`./4d_check.exe ____lnlamp_output_mix_6`
             time_mix_7=`./4d_check.exe ____lnlamp_output_mix_7`
             time_mix_8=`./4d_check.exe ____lnlamp_output_mix_8`
-            # rm -f ____lnlamp_output_*
+            # 用完删掉
+            rm -f ____lnlamp_output_*
         fi
         rm -f 4d_check.exe
     fi
