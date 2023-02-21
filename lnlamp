@@ -1105,6 +1105,14 @@ then
         fi
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+        # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors at the end."
+            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            exit
+        fi
+        echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
     fi
 else
     max_income=0.0
@@ -1132,6 +1140,14 @@ else
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+        # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors at the end."
+            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            exit
+        fi
+        echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
     fi
 fi
 echo ""
