@@ -43,7 +43,7 @@ LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/ln
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置
-PPCG_TILE_FLAGS=""
+PPCG_TILE_FLAGS="--tile --tile-size=32"
 PPCG_OPENMP_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
@@ -1103,6 +1103,8 @@ then
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
         fi
+        # 临时加一个语句，生成schedule+mix的版本
+        ppcg --target c -R ${best_rate[@]} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1113,6 +1115,8 @@ then
             exit
         fi
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
+        # 临时加一个语句，生成schedule+mix的版本
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
     fi
 else
     max_income=0.0
@@ -1138,6 +1142,8 @@ else
             exit
         fi
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
+        # 临时加一个语句，生成schedule+mix的版本
+        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1148,6 +1154,12 @@ else
             exit
         fi
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
+        # 临时加一个语句，生成schedule+mix的版本
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
     fi
 fi
 echo ""
+
+# 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
+ppcg --target c --no-automatic-mixed-precision ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
+ppcg --target c --no-automatic-mixed-precision ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
