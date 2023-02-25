@@ -1885,6 +1885,16 @@ static __isl_give isl_printer *print_kernel_var(__isl_take isl_printer *p,
 {
 	int j;
 
+    // 用来处理amp低精度数组声明的数组大小可能用到宏定义的特殊情况.
+    for (j = 0; j < var->array->n_index; ++j)
+	{
+		isl_val *v;
+		v = isl_vec_get_element_val(var->size, j);
+		if (isl_val_is_one(v))
+			p = ppcg_ast_expr_print_macros(var->array->bound_expr,p);
+		isl_val_free(v);
+    }
+    
 	p = isl_printer_start_line(p);
 	// if (var->type == ppcg_access_shared)
 	// 	p = isl_printer_print_str(p, "__shared__ ");
