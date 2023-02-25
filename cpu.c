@@ -2337,6 +2337,14 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
 	p = isl_printer_print_str(p, "/* ppcg generated CPU code with AMP */");
 	p = isl_printer_end_line(p);
 
+	// p = isl_printer_start_line(p);
+	// p = isl_printer_print_str(p, "#define ppcg_min(x,y)    (x < y ? x : y)");
+	// p = isl_printer_end_line(p);
+
+	// p = isl_printer_start_line(p);
+	// p = isl_printer_print_str(p, "#define ppcg_max(x,y)    (x > y ? x : y)");
+	// p = isl_printer_end_line(p);
+
 	p = isl_printer_start_line(p);
 	p = isl_printer_end_line(p);
 
