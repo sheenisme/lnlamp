@@ -42,8 +42,8 @@ CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
 EXIT_FLAGS="-lm"
-# TODO: 配置PPCG CodeGen时的一些自定义设置
-PPCG_TILE_FLAGS="--tile --tile-size=32"
+# TODO: 配置PPCG CodeGen时的一些自定义设置(Tile已经支持自定义了)
+PPCG_TILE_FLAGS=""
 PPCG_OPENMP_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
@@ -57,6 +57,9 @@ parameter_count=0
 # 是否指定target_file的Flags
 specify_output_flag=0
 target_file=""
+# 是否指定tile的Flags
+specify_tile_flag=0
+tile_size=""
 # c++ Flags
 cpp_flag=0
 # 临时profiling的后缀
@@ -112,6 +115,12 @@ do
             specify_output_flag=1
             shift
             ;;
+        -t|--tile)
+            parameter_count=`expr $parameter_count + 1`
+            # 如果需要指定循环分块,则flag设为1
+            specify_tile_flag=1
+            shift
+            ;;
         -v|--version)
             parameter_count=`expr $parameter_count + 1`
             echo "The installation position is: $lnlamp_dir"
@@ -150,6 +159,11 @@ do
                 target_file=$1
                 specify_output_flag=2
                 shift
+            elif [ $specify_tile_flag -eq 1 ];
+            then
+                tile_size=$1
+                specify_tile_flag=2
+                shift
             else
                 echo ""
                 echo "Sorry, the '$1' operation is invalid!"
@@ -160,68 +174,88 @@ do
                 exit   
             fi
     esac
-    # 输入参数的处理over,下面再处理一下其他的一些参数.
-
-    # 检查src_args长度是否为1,目前暂只支持一个源文件的自动混合精度
-    if [ ${#src_args[@]} -ne 1 ];
-    then
-        echo "lnlamp: error: Parameter input error"
-        echo "lnlamp: fatal error: input files is more than 1 "
-        echo "Compilation terminated."
-        echo ""
-        echo "Please use option '-h | --help' to quickly use lnlamp."
-        echo ""
-        exit
-    fi
-
-    # 设置target_file
-    if [ $specify_output_flag -le 1 ];
-    then
-        # 如果设置了'-s',但是没有设置'target_file',则进行警告
-        if [ $specify_output_flag -eq 1 ];
-        then
-            echo "lnlamp: warning: missing target-file name after '-s', taregt-file will be reset to <source>_lnlamp.c or <source>_lnlamp.cpp"
-        fi
-        for src in ${src_args[@]}; 
-        do  
-            kernel=${src##*/}
-            kernel=${kernel%%.*}
-		    target_file="${kernel}_lnlamp.c"
-        done
-    fi
-
-    # 自动判断后缀类型
-    for src in ${src_args[@]}; 
-    do
-        case $src in
-            *.c)
-                echo "c files " > /dev/null
-                cpp_flag=0
-                CC="gcc"
-                prf_suf=".c"
-                ;;
-            *.cc)
-                echo "c++ files " > /dev/null
-                cpp_flag=1
-                CC="g++"
-                target_file="${target_file}c"
-                prf_suf=".cc"
-                ;;
-            *.cpp)
-                echo "c++ files " > /dev/null
-                cpp_flag=2
-                CC="g++"
-                target_file="${target_file}pp"
-                prf_suf=".cpp"
-                ;;
-            *)
-                echo "lnlamp: warning: unsupported file suffixes, please note. "
-        esac      
-    done
-    PARAMETER_READY=true
 done
-# 释放specify_output_flag
+# 检查src_args长度是否为1,目前暂只支持一个源文件的自动混合精度
+if [ ${#src_args[@]} -ne 1 ];
+then
+    echo "lnlamp: error: Parameter input error"
+    echo "lnlamp: fatal error: input files is not 1(${#src_args[@]}) "
+    echo "Compilation terminated."
+    echo ""
+    echo "Please use option '-h | --help' to quickly use lnlamp."
+    echo ""
+    exit
+fi
+PARAMETER_READY=true
+# 输入参数的处理over,下面再处理一下其他的一些参数.
+
+# 设置target_file
+if [ $specify_output_flag -le 1 ];
+then
+    # 如果设置了'-s',但是没有设置'target_file',则进行警告
+    if [ $specify_output_flag -eq 1 ];
+    then
+        echo "lnlamp: warning: missing target-file name after '-s', taregt-file will be reset to <source>_lnlamp.c or <source>_lnlamp.cpp"
+    fi
+    for src in ${src_args[@]}; 
+    do  
+        kernel=${src##*/}
+        kernel=${kernel%%.*}
+        target_file="${kernel}_lnlamp.c"
+    done
+fi
+
+# 自动判断后缀类型
+for src in ${src_args[@]}; 
+do
+    case $src in
+        *.c)
+            echo "c files " > /dev/null
+            cpp_flag=0
+            CC="gcc"
+            prf_suf=".c"
+            ;;
+        *.cc)
+            echo "c++ files " > /dev/null
+            cpp_flag=1
+            CC="g++"
+            target_file="${target_file}c"
+            prf_suf=".cc"
+            ;;
+        *.cpp)
+            echo "c++ files " > /dev/null
+            cpp_flag=2
+            CC="g++"
+            target_file="${target_file}pp"
+            prf_suf=".cpp"
+            ;;
+        *)
+            echo "lnlamp: warning: unsupported file suffixes, please note. "
+    esac      
+done
+
+# 设置循环分块及其大小
+if [ $specify_tile_flag -ge 1 ];
+then
+    # 如果设置了'-t',但是没有设置'tile-size',则进行警告
+    if [ $specify_tile_flag -eq 1 ];
+    then
+        echo "lnlamp: warning: Missing tile size string after '-t', tile size be reset to '32' "
+        PPCG_TILE_FLAGS="--tile --tile-size=32"
+    else
+        case "${tile_size}" in 
+            [1-9][0-9]*)  
+                PPCG_TILE_FLAGS="--tile --tile-size=${tile_size}"
+                ;; 
+            *)
+                PPCG_TILE_FLAGS="--split-tile --tile-sizes=${tile_size}"
+                ;; 
+        esac
+    fi
+fi
+# 释放flag变量
 unset specify_output_flag
+unset specify_tile_flag
 
 
 
@@ -266,6 +300,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[0]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[1]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -296,6 +331,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[2]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[3]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -311,7 +347,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[3]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[4]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -327,6 +362,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[4]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[5]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -357,6 +393,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[6]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[7]} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
