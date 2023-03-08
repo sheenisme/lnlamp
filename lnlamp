@@ -1187,6 +1187,8 @@ then
         fi
         # 临时加一个语句，生成schedule+mix的版本
         ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # 临时加一个语句，生成只进行mix的版本
+        ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1199,6 +1201,8 @@ then
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
         # 临时加一个语句，生成schedule+mix的版本
         ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # 临时加一个语句，生成只进行mix的版本
+        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     fi
 else
     max_income=0.0
@@ -1226,6 +1230,8 @@ else
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
         # 临时加一个语句，生成schedule+mix的版本
         ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # 临时加一个语句，生成只进行mix的版本
+        ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1238,6 +1244,8 @@ else
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
         # 临时加一个语句，生成schedule+mix的版本
         ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # 临时加一个语句，生成只进行mix的版本
+        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     fi
 fi
 echo ""
