@@ -40,7 +40,7 @@ VERBOSE=""
 CC="/media/sheen/文件/ubuntu_code_data/llvm-project/llvm-install/bin/clang"
 CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
-PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS -DPOLYBENCH_USE_C99_PROTO"
+PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置(Tile已经支持自定义了)
 PPCG_TILE_FLAGS=""
