@@ -27,7 +27,7 @@ if len(sys.argv) != 19:
     for i in range(1, len(sys.argv)):
         print('参数 %s 为：%s' % (i, sys.argv[i]))
     print("lnlamp: error: lnlamp_internal_usage.py 接收的参数存在错误!!!")
-    exit
+    exit()
 
 # 解析输入
 x=[]
@@ -38,13 +38,13 @@ for i in range(1, len(sys.argv)):
     else:
         y.append(float(sys.argv[i]))
 # 检查获取的点是一一对应的
-print("rate:")
+print("rate(%):")
 print(x)
-print("time:")
+print("time(s):")
 print(y)
 if len(x) != len(y):
     print("lnlamp: error: lnlamp_internal_usage.py 接收的参数不是一一对应的，存在问题!!!")
-    exit 
+    exit() 
 m = len(x)
 
 # 初始化矩阵
@@ -76,11 +76,22 @@ print("二次拟合曲线的极值点:")
 print(extreme_value)
 
 # 输出原始的点
-plt.plot(x,y,"go")
+plt.plot(x,y,"ko")
 # 输出拟合的曲线
 xx = np.linspace(0,99)
 yy = float(out[2])*xx*xx + float(out[1])*xx + float(out[0])
-plt.plot(xx,yy,label="$float(out[2])*xx*xx + float(out[1])*xx + float(out[0])$",color="red",linewidth=3)
+plt.plot(xx,yy,label="time="+"{:.{}e}".format(float(out[2]), 3)+"*r^2+ "+"{:.{}e}".format(float(out[1]), 3)+"*r+ "+"{:.{}e}".format(float(out[0]), 5),color="red")
+
+# 设置横纵坐标轴和图例
+plt.ylabel('time(s)', fontsize=10.5)
+plt.xlabel('rate', fontsize=10.5)
+plt.legend()
+# 控制纵坐标显示科学计算法，并显示三个有效数字
+plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0), useMathText=True)
+plt.gca().yaxis.set_major_formatter(plt.FormatStrFormatter('%.2e'))
+
+# 调整图像布局
+plt.tight_layout()
 
 # 保存结果 or 暂时结果
 # plt.show()
