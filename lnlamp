@@ -23,7 +23,8 @@ function onCtrlC () {
     rm -f ____lnlamp_*
     exit
 }
-
+# 将堆栈的大小设置为无限制
+ulimit -s unlimited
 
 
 # 调试模式开关
