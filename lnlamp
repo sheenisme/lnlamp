@@ -229,20 +229,20 @@ do
         *.c)
             echo "c files " > /dev/null
             cpp_flag=0
-            CC="gcc"
+            CC+=" "
             prf_suf=".c"
             ;;
         *.cc)
             echo "c++ files " > /dev/null
             cpp_flag=1
-            CC="g++"
+            CC+="++ "
             target_file="${target_file}c"
             prf_suf=".cc"
             ;;
         *.cpp)
             echo "c++ files " > /dev/null
             cpp_flag=2
-            CC="g++"
+            CC+="++ "
             target_file="${target_file}pp"
             prf_suf=".cpp"
             ;;
@@ -311,6 +311,7 @@ time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
     echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
     echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
+    echo "lnlamp: message: Default  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
 fi
 if [[ ${PARAMETER_READY} = true ]]; 
 then
