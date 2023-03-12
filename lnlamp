@@ -279,23 +279,23 @@ then
     if [ $specify_sched_flags -eq 1 ];
     then
         echo "lnlamp: warning: Missing schedule-algorithm string after '-a', so the --isl-schedule-algorithm will be reset to 'isl'. "
-        PPCG_SCHEDULE_FLAGS=""
+        PPCG_SCHEDULE_FLAGS+=""
     else
         case "${sched_algo}" in 
             *isl*)  
-                PPCG_SCHEDULE_FLAGS=""    # 默认便是isl调度变换算法
+                PPCG_SCHEDULE_FLAGS+=""    # 默认便是isl调度变换算法
                 ;;
             *feautrier*)  
-                PPCG_SCHEDULE_FLAGS="--isl-schedule-algorithm=feautrier"    # 需要手工指定才能修改为feautrier
+                PPCG_SCHEDULE_FLAGS+="--isl-schedule-algorithm=feautrier"    # 需要手工指定才能修改为feautrier
                 ;; 
             *no*)
-                PPCG_SCHEDULE_FLAGS="--no-reschedule"    # 需要手工设置no-reschedudle
+                PPCG_SCHEDULE_FLAGS+="--no-reschedule"    # 需要手工设置no-reschedudle
                 PPCG_TILE_FLAGS=""        # 不进行调度变换,那么就没必要进行循环分块和OPENMP参数的设定了
                 PPCG_OPENMP_FLAGS=""
                 ;;
             *)
                 echo "lnlamp: warning: the schedule-algorithm string after '-a' is Non-legitimate(isl|feautrier|no), so the --isl-schedule-algorithm will be reset to 'isl'. "
-                PPCG_SCHEDULE_FLAGS=""
+                PPCG_SCHEDULE_FLAGS+=""
         esac
     fi
 fi
