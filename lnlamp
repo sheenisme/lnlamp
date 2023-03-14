@@ -46,6 +46,7 @@ EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置(Tile已经支持自定义了)
 PPCG_TILE_FLAGS=""
 PPCG_OPENMP_FLAGS=""
+PPCG_ISL_FLAGS=""
 PPCG_SCHEDULE_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
@@ -65,6 +66,9 @@ tile_size=""
 # 是否指定schedule的Flags
 specify_sched_flags=0
 sched_algo=""
+# 是否指定ISL库的Flags
+specify_isl_flags=0
+isl_flags=""
 # c++ Flags
 cpp_flag=0
 # 临时profiling的后缀
@@ -132,6 +136,12 @@ do
             specify_sched_flags=1
             shift
             ;;
+        -i|--isl-flags)
+            parameter_count=`expr $parameter_count + 1`
+            # 如果指定了isl的Flags,则flag设为1
+            specify_isl_flags=1
+            shift
+            ;;
         -v|--version)
             parameter_count=`expr $parameter_count + 1`
             echo "The installation position is: $lnlamp_dir"
@@ -152,6 +162,7 @@ do
             echo "    -v | --version           lnlamp compiler version"
             echo "    -t | --tile              lnlamp specify the tile-sizes(default none) in PPCG"
             echo "    -a | --sched-algo        lnlamp specify the schedule-algorithm to isl|feautrier|no in PPCG, default is isl"
+            echo "    -i | --isl-flags         lnlamp specify the flags in isl library of PPCG, default is null"
             echo ""
             echo "Examples:"
             echo "    lnlamp hellp.c -s hello_lnlamp.c"
@@ -181,6 +192,11 @@ do
             then
                 sched_algo=$1
                 specify_sched_flags=2
+                shift
+            elif [ $specify_isl_flags -eq 1 ];
+            then
+                isl_flags=$1
+                specify_isl_flags=2
                 shift
             else
                 echo ""
@@ -299,9 +315,25 @@ then
         esac
     fi
 fi
+
+# 设置ISL库的FLAGS
+if [ $specify_isl_flags -ge 1 ];
+then
+    # 如果设置了'-i',但是没有设置'isl_flags',则进行警告
+    if [ $specify_isl_flags -eq 1 ];
+    then
+        echo "lnlamp: warning: Missing isl flags after '-i', the flags will be reset null."
+        PPCG_ISL_FLAGS+=""
+    else
+        PPCG_ISL_FLAGS+="${isl_flags}"
+    fi
+fi
+
 # 释放flag变量
 unset specify_output_flag
 unset specify_tile_flag
+unset specify_sched_flags
+unset specify_isl_flags
 
 
 
@@ -311,17 +343,17 @@ start=`date +%s%N`
 time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
     echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
-    echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
+    echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
     echo "lnlamp: message: Default  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
 fi
 if [[ ${PARAMETER_READY} = true ]]; 
 then
     # 并行地进行PPCG_Codegen并编译
     {
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg__.exe ${EXIT_FLAGS} > /dev/null 2>&1
@@ -333,10 +365,10 @@ then
         rm -f ____lnlamp_ppcg__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[0]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[0]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[0]}__${prf_suf} -o  ____lnlamp_${rate_array[0]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
@@ -349,10 +381,10 @@ then
     }&
     wait
     {
-        ppcg --target c -R ${rate_array[1]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[1]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[1]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[1]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[1]}__${prf_suf} -o  ____lnlamp_${rate_array[1]}__.exe  ${EXIT_FLAGS}  > /dev/null 2>&1
@@ -364,10 +396,10 @@ then
         rm -f ____lnlamp_${rate_array[1]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[2]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[2]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[2]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[2]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[2]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[2]}__${prf_suf} -o  ____lnlamp_${rate_array[2]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -380,10 +412,10 @@ then
     }&
     wait
     {
-        ppcg --target c -R ${rate_array[3]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[3]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[3]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[3]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[3]}__${prf_suf} -o  ____lnlamp_${rate_array[3]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -395,10 +427,10 @@ then
         rm -f ____lnlamp_${rate_array[3]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[4]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[4]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[4]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[4]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[4]}__${prf_suf} -o  ____lnlamp_${rate_array[4]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -411,10 +443,10 @@ then
     }&
     wait
     {
-        ppcg --target c -R ${rate_array[5]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[5]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[5]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[5]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[5]}__${prf_suf} -o  ____lnlamp_${rate_array[5]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -426,10 +458,10 @@ then
         rm -f ____lnlamp_${rate_array[5]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[6]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[6]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[6]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[6]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[6]}__${prf_suf} -o  ____lnlamp_${rate_array[6]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -442,10 +474,10 @@ then
     }&
     wait
     {
-        ppcg --target c -R ${rate_array[7]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[7]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[7]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[7]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[7]}__${prf_suf} -o  ____lnlamp_${rate_array[7]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -457,10 +489,10 @@ then
         rm -f ____lnlamp_${rate_array[7]}__${prf_suf}
     }&
     {
-        ppcg --target c -R ${rate_array[8]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} > /dev/null 2>&1
+        ppcg --target c -R ${rate_array[8]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors."
-            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[8]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} "
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[8]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[8]}__${prf_suf} "
             exit
         fi
         ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_${rate_array[8]}__${prf_suf} -o  ____lnlamp_${rate_array[8]}__.exe  ${EXIT_FLAGS} > /dev/null 2>&1
@@ -1156,10 +1188,10 @@ then
         then
             echo "The performance of the lnlamp programs decreases monotonically with increasing Rate, so the Rate 0 is the best. "
             # 生成最合适比例下对应的混合精度代码提供给用户
-            ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo "lnlamp: error: PPCG Codegen meets errors at the end."
-                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
@@ -1168,10 +1200,10 @@ then
         then
             echo "The performance of the lnlamp program rises monotonically with increasing Rate, so the Rate 99 is the best. "
             # 生成最合适比例下对应的混合精度代码提供给用户
-            ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo "lnlamp: error: PPCG Codegen meets errors at the end."
-                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
@@ -1179,30 +1211,30 @@ then
         else
             echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate ($extremeValue) is probably the most appropriate ratio. "
             # 生成最合适比例下对应的混合精度代码提供给用户
-            ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo "lnlamp: error: PPCG Codegen meets errors at the end."
-                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
         fi
         # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c -R ${best_rate[@]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
         ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
             exit
         fi
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
         # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
         ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     fi
@@ -1223,29 +1255,29 @@ else
     then
         echo "The performance of the lnlamp program shows a quadratic relationship with the Rate, so the integer value around Rate (${best_rate[$max_income_id]}) is probably the most appropriate ratio. "  
         # 生成最合适比例下对应的混合精度代码提供给用户
-        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
             exit
         fi
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
         # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
         ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     else
         echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
         # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
             echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
             exit
         fi
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
         # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
         ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     fi
@@ -1253,5 +1285,5 @@ fi
 echo ""
 
 # 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
-ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
-ppcg --target c --no-automatic-mixed-precision ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
+ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
+ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
