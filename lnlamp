@@ -444,6 +444,7 @@ then
         fi
         rm -f ____lnlamp_ppcg__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[0]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -489,6 +490,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[2]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[3]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -504,7 +506,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[3]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[4]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -535,6 +536,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[5]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[6]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[6]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -624,6 +626,7 @@ then
             done
             rm -f ____lnlamp_ppcg__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -690,6 +693,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -712,7 +716,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -757,6 +760,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[5]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -855,6 +859,7 @@ then
             done
             rm -f ____lnlamp_ppcg__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -921,6 +926,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -943,7 +949,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -988,6 +993,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[5]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
