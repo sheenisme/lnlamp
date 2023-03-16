@@ -384,7 +384,7 @@ compute_mean_exec_time()
     val11=`echo "a=$val1 - $time;if(0>a)a*=-1;a" | bc 2>&1`;
     test_err=`echo "$val11" | grep error`;
     if ! [ -z "$test_err" ]; then
-	# echo "[ERROR] Program output does not match expected single-line with time."    ;
+	echo "[ERROR] Program output does not match expected single-line with time."    ;
 	# echo "[ERROR] The program must be a PolyBench, compiled with -DPOLYBENCH_TIME"  ;
 	exit 1;
     fi;
@@ -459,7 +459,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[0]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[1]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[1]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -490,7 +489,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[2]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[3]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[3]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -506,6 +504,7 @@ then
         fi
         rm -f ____lnlamp_${rate_array[3]}__${prf_suf}
     }&
+    wait
     {
         ppcg --target c -R ${rate_array[4]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[4]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -521,7 +520,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[4]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[5]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[5]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -552,7 +550,6 @@ then
         fi
         rm -f ____lnlamp_${rate_array[6]}__${prf_suf}
     }&
-    wait
     {
         ppcg --target c -R ${rate_array[7]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[7]}__${prf_suf} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -649,7 +646,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -694,7 +690,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -717,6 +712,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -739,7 +735,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -784,7 +779,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -883,7 +877,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[0]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -928,7 +921,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[2]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -951,6 +943,7 @@ then
             done
             rm -f ____lnlamp_${rate_array[3]}__.exe
         }&
+        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -973,7 +966,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[4]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
@@ -1018,7 +1010,6 @@ then
             done
             rm -f ____lnlamp_${rate_array[6]}__.exe
         }&
-        wait
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
