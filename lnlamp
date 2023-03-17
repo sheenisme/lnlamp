@@ -836,11 +836,6 @@ then
         if [ $DEBUG_TYPE -eq 1 ];then
             echo "lnlamp: message: Profiling will not use any input file(which means the program does not require any input)."
         fi
-        TASKSET=""
-        which taskset > /dev/null
-        if [ $? -eq 0 ]; then
-            TASKSET="taskset -c "
-        fi
         {
             # initial variance is 100 
             VARIANCE_TEST=100;
