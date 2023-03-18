@@ -177,7 +177,7 @@ do
             echo "    -i | --isl-flags         lnlamp specify the flags in isl library of PPCG, default is null"
             echo ""
             echo "Examples:"
-            echo "    lnlamp hellp.c -s hello_lnlamp.c"
+            echo "    lnlamp hello.c -s hello_lnlamp.c"
             echo ""
             echo "Template:"
             echo "    lnlamp <source-file> [Options] <target-file>"
