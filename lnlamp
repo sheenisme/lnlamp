@@ -33,8 +33,9 @@ DEBUG_TYPE=1
 timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
-# TODO: 添加profiling时的混合比例 (-r|--rate)  的设置
-rate_array=(1 12 25 37 50 62 75 87 99)
+# 是否指定rate_array的Flag
+specify_rate_array_flag=0
+rate_array=(0 12 25 37 50 62 75 87 99)
 start_rate=0
 end_rate=99
 # rate_array=(16 32 49 66 82)
@@ -128,6 +129,12 @@ do
             specify_output_flag=1
             shift
             ;;
+        -r|--rate-array)
+            parameter_count=`expr $parameter_count + 1`
+            # 如果需要指定rate_array,则flag设为1
+            specify_rate_array_flag=1
+            shift
+            ;;
         -t|--tile)
             parameter_count=`expr $parameter_count + 1`
             # 如果需要指定循环分块,则flag设为1
@@ -163,7 +170,8 @@ do
             echo ""
             echo "Options:"
             echo "    -s | --specify-output    specify the target file"
-            echo "    -v | --version           lnlamp compiler version"
+            echo "    -r | --rate-array        specify the rate-array of profiling(default is:$(echo ${rate_array[*]}))"
+            echo "    -v | --version           lnlamp version"
             echo "    -t | --tile              lnlamp specify the tile-sizes(default none) in PPCG"
             echo "    -a | --sched-algo        lnlamp specify the schedule-algorithm to isl|feautrier|no in PPCG, default is isl"
             echo "    -i | --isl-flags         lnlamp specify the flags in isl library of PPCG, default is null"
@@ -186,6 +194,11 @@ do
                 src_args+=("$1")
                 target_file=$1
                 specify_output_flag=2
+                shift
+            elif [ $specify_rate_array_flag -eq 1 ];
+            then
+                temp_rate_array=$1
+                specify_rate_array_flag=2
                 shift
             elif [ $specify_tile_flag -eq 1 ];
             then
@@ -241,6 +254,18 @@ then
         kernel=${kernel%%.*}
         target_file="${kernel}_lnlamp.c"
     done
+fi
+
+# 设置rate_array
+if [ $specify_rate_array_flag -ge 1 ];
+then
+    # 如果设置了'-r',但是没有设置'rate_array',则进行警告
+    if [ $specify_rate_array_flag -eq 1 ];
+    then
+        echo "lnlamp: warning: missing rate-array string after '-r', rate-array will be reset to $(echo ${rate_array[*]})."
+    else
+        rate_array=(${temp_rate_array[@]})
+    fi
 fi
 
 # 自动判断后缀类型
@@ -334,6 +359,7 @@ then
 fi
 # 释放flag变量
 unset specify_output_flag
+unset specify_rate_array_flag
 unset specify_tile_flag
 unset specify_sched_flags
 unset specify_isl_flags
@@ -345,9 +371,9 @@ unset specify_isl_flags
 start=`date +%s%N`
 time_array=()
 if [ $DEBUG_TYPE -eq 1 ];then
-    echo "lnlamp: message: Default Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
-    echo "lnlamp: message: Default   PPCG   FLAGS is: ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
-    echo "lnlamp: message: Default  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
+    echo "lnlamp: message: The Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
+    echo "lnlamp: message: The   PPCG   FLAGS is: ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
+    echo "lnlamp: message: The  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
 fi
 # init variance of test is 100 
 VARIANCE_TEST=100;
