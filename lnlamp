@@ -54,6 +54,7 @@ PPCG_SCHEDULE_FLAGS=""
 if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
 then
     CFLAGS="$CFLAGS -fopenmp"
+    num_threads=4
 fi
 
 # 源文件参数
@@ -628,6 +629,8 @@ then
     fi
 
     # Profiling (default input file is input.txt)
+    # 设置线程的数量
+    export OMP_NUM_THREADS=$num_threads
     if [ -e $input ];
     then
         if [ $DEBUG_TYPE -eq 1 ];then
