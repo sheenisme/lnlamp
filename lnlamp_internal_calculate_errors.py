@@ -48,11 +48,15 @@ def ComputeDifference(float_data, double_data):
       if(abs_err_temp > max_abs_err) :
         max_abs_err = abs_err_temp
       
-      prc_err_temp=abs_err_temp / v_double.copy_abs() * 100
-      # 更新最大相对误差
-      if(prc_err_temp > max_prc_err) :
-        max_prc_err = prc_err_temp
-      acc_val += v_double.copy_abs()
+      # 如果真值是零的话，则继续
+      if v_double.copy_abs().is_zero():
+        continue;
+      else:
+        prc_err_temp=abs_err_temp / v_double.copy_abs() * 100
+        # 更新最大相对误差
+        if(prc_err_temp > max_prc_err) :
+          max_prc_err = prc_err_temp
+        acc_val += v_double.copy_abs()
       
   e_prc = (acc_err / acc_val * 100) if acc_val > 0 and n > 0 else -1
   e_abs = (acc_err / n) if n > 0 else -1
