@@ -19,15 +19,15 @@ def writer_txt(file, nd_name):
 
 
 
-# 检查python文件参数.
-if len(sys.argv) != 19:
-    print('参数个数为:', len(sys.argv), '个参数。')
-    print('参数列表:', str(sys.argv))
-    print('脚本名为：', sys.argv[0])
-    for i in range(1, len(sys.argv)):
-        print('参数 %s 为：%s' % (i, sys.argv[i]))
-    print("lnlamp: error: lnlamp_internal_usage.py 接收的参数存在错误!!!")
-    exit()
+# # 检查python文件参数.
+# if len(sys.argv) > 19:
+#     print('参数个数为:', len(sys.argv), '个参数。')
+#     print('参数列表:', str(sys.argv))
+#     print('脚本名为：', sys.argv[0])
+#     for i in range(1, len(sys.argv)):
+#         print('参数 %s 为：%s' % (i, sys.argv[i]))
+#     print("lnlamp: error: lnlamp_internal_curve_fitting.py 接收的参数存在错误!!!")
+#     exit()
 
 # 解析输入
 x=[]
@@ -43,7 +43,7 @@ print(x)
 print("time(s):")
 print(y)
 if len(x) != len(y):
-    print("lnlamp: error: lnlamp_internal_usage.py 接收的参数不是一一对应的，存在问题!!!")
+    print("lnlamp: error: lnlamp_internal_curve_fitting.py 接收的参数不是一一对应的，存在问题!!!")
     exit() 
 m = len(x)
 
@@ -78,7 +78,7 @@ print(extreme_value)
 # 输出原始的点
 plt.plot(x,y,"ko")
 # 输出拟合的曲线
-xx = np.linspace(0,99)
+xx = np.linspace(x[0], x[len(x)-1])
 yy = float(out[2])*xx*xx + float(out[1])*xx + float(out[0])
 plt.plot(xx,yy,label="time="+"{:.{}e}".format(float(out[2]), 3)+"*r^2+ "+"{:.{}e}".format(float(out[1]), 3)+"*r+ "+"{:.{}e}".format(float(out[0]), 5),color="red")
 

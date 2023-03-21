@@ -25,7 +25,7 @@ AM_CPPFLAGS = @ISL_CFLAGS@ @PET_CFLAGS@
 LDADD = $(LIB_PET) $(LIB_ISL)
 
 bin_PROGRAMS = ppcg
-bin_SCRIPTS = lnlamp 4d_check.c lnlamp_internal_usage.py
+bin_SCRIPTS = lnlamp 4d_check.c lnlamp_internal_curve_fitting.py lnlamp_internal_calculate_errors.py
 ppcg_SOURCES = \
 	cpu.c \
 	cpu.h \

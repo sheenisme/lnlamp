@@ -33,18 +33,12 @@ DEBUG_TYPE=1
 timing_type=0
 # TODO: 添加profiling时的输入文件 (-i|--input) 的设置
 input="input.txt"
-# 是否指定rate_array的Flag
-specify_rate_array_flag=0
-rate_array=(0 12 25 37 50 62 75 87 99)
-start_rate=0
-end_rate=99
-# rate_array=(16 32 49 66 82)
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
 CC="/media/sheen/文件/ubuntu_code_data/llvm-project/llvm-install/bin/clang"
 CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
-PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_STACK_ARRAYS"
+PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS -DPOLYBENCH_STACK_ARRAYS"
 EXIT_FLAGS="-lm"
 # TODO: 配置PPCG CodeGen时的一些自定义设置(Tile已经支持自定义了)
 PPCG_TILE_FLAGS=""
@@ -64,6 +58,11 @@ parameter_count=0
 # 是否指定target_file的Flags
 specify_output_flag=0
 target_file=""
+# 是否指定rate_array的Flag
+specify_rate_array_flag=0
+rate_array=(0 12 25 37 50 62 75 87 99)
+start_rate=0
+end_rate=99
 # 是否指定tile的Flags
 specify_tile_flag=0
 tile_size=""
@@ -80,9 +79,14 @@ prf_suf=""
 # Profiling的次数(不包含数据预热）,必须为10，暂不支持修改
 frequency=10
 readonly frequency
+# TODO: 配置三个参数的自定义支持
 # Maximal variance accepted between the 10 median runs for performance results.
-VARIANCE_ACCEPTED=5;
-# Step1: 先处理一下输入.
+VARIANCE_ACCEPTED=10;
+# 设定误差阈值,及其类型(1-最大绝对误差(默认)，2-最大相对误差，3-平均绝对误差，4-平均相对误差)
+ERROR_THRESHOLD=0.0001
+ERROR_TYPE=1
+
+# Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
 do
     # 处理输入的参数
@@ -360,25 +364,160 @@ then
 fi
 # 释放flag变量
 unset specify_output_flag
-unset specify_rate_array_flag
 unset specify_tile_flag
 unset specify_sched_flags
 unset specify_isl_flags
 
 
 
+# Step1: 先计算double和float的误差情况.
+# 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
+start=`date +%s%N`
+if [[ ${PARAMETER_READY} = true ]]; then
+    # 如果用户没有指定rate_array，则用误差数据去确定;如果指定了，那么直接去Profiling.
+    if [ $specify_rate_array_flag -le 1 ];
+    then
+        # 并行地编译Double和Float精度计算的代码
+        {
+            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} "
+                exit
+            fi
+            ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg_double__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: Compiling meets errors."
+                echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} -DDATA_TYPE_IS_DOUBLE=1 ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg_double__.exe ${EXIT_FLAGS}"
+                exit
+            fi
+            rm -f ____lnlamp_ppcg__${prf_suf}
+        }&
+        {
+            ppcg --target c -R $start_rate ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_amp__${prf_suf} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${rate_array[0]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_${rate_array[0]}__${prf_suf} "
+                exit
+            fi
+            ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_amp__${prf_suf} -o  ____lnlamp_ppcg_float__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: Compiling meets errors."
+                echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} -DDATA_TYPE_IS_FLOAT=1  ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg_float__.exe ${EXIT_FLAGS}"
+                exit
+            fi
+            rm -f ____lnlamp_amp__${prf_suf}
+        }&
+        wait
+        
+        
+        # 执行程序，获取计算结果
+        if [ -e $input ];
+        then
+            { ./____lnlamp_ppcg_double__.exe < $input 2> ____lnlamp_error_double.res > /dev/null; } 2> /dev/null
+            { ./____lnlamp_ppcg_float__.exe  < $input 2> ____lnlamp_error_float.res  > /dev/null; } 2> /dev/null
+        else
+            { ./____lnlamp_ppcg_double__.exe  2> ____lnlamp_error_double.res > /dev/null; } 2> /dev/null
+            { ./____lnlamp_ppcg_float__.exe   2> ____lnlamp_error_float.res  > /dev/null; } 2> /dev/null
+        fi
+        rm -f ____lnlamp_ppcg_double__.exe ____lnlamp_ppcg_float__.exe
+
+        # 删除非计算结果的那些字符串
+        sed -i "/==BEGIN DUMP_ARRAYS==/d"  ____lnlamp_error_double.res
+        sed -i "/==END   DUMP_ARRAYS==/d"  ____lnlamp_error_double.res
+        sed -i "/begin dump/d"             ____lnlamp_error_double.res 
+        sed -i "/end   dump/d"             ____lnlamp_error_double.res
+        sed -i "/==BEGIN DUMP_ARRAYS==/d"  ____lnlamp_error_float.res
+        sed -i "/==END   DUMP_ARRAYS==/d"  ____lnlamp_error_float.res
+        sed -i "/begin dump/d"             ____lnlamp_error_float.res 
+        sed -i "/end   dump/d"             ____lnlamp_error_float.res
+        # 计算误差结果
+        python3 $lnlamp_dir/lnlamp_internal_calculate_errors.py ____lnlamp_error_double.res ____lnlamp_error_float.res > lnlamp_internal_usage.py.log 2>&1 ;
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: Calculate errors(lnlamp_internal_calculate_errors.py) problems encountered!"
+            exit
+        fi
+        rm -f ____lnlamp_error_double.res ____lnlamp_error_float.res
+
+        # 获取各种误差数据
+        double_no=`cat lnlamp_internal_usage.py.log | head -n 1`;
+        float_no=` cat lnlamp_internal_usage.py.log | head -n 2 | tail -n 1`;
+        mean_err_prc=`cat lnlamp_internal_usage.py.log | head -n 3 | tail -n 1`;
+        mean_err_abs=`cat lnlamp_internal_usage.py.log | head -n 4 | tail -n 1`;
+        max_err_prc=`cat lnlamp_internal_usage.py.log | head -n 5 | tail -n 1`;
+        max_err_abs=`cat lnlamp_internal_usage.py.log | head -n 6 | tail -n 1`;
+
+        # 确定单调下降的误差曲线在0和99处的误差值
+        # 如果有非数，先不进行处理
+        if [ $ERROR_TYPE -eq 1 ]; then
+            max_err=$max_err_abs
+            min_err=0.0
+        elif [ $ERROR_TYPE -eq 2 ]; then
+            max_err=$max_err_prc
+            min_err=0.0
+        elif [ $ERROR_TYPE -eq 3 ]; then
+            max_err=$mean_err_abs
+            min_err=0.0
+        elif [ $ERROR_TYPE -eq 4 ]; then
+            max_err=$mean_err_prc
+            min_err=0.0
+        else
+            echo "lnlamp: error: ERROR_TYPE configuration errors!"
+            exit
+        fi
+        unset double_no
+        unset float_no
+        unset mean_err_prc
+        unset mean_err_abs
+        unset max_err_prc
+        unset max_err_abs
+        
+        # 如果误差阈值小于当前大于最小误差，那么说明配置有误
+        if [ $(echo "$ERROR_THRESHOLD < $min_err" | bc) -eq 1 ];
+        then
+            echo "lnlamp: error: ERROR THRESHOLD configuration errors: expr ($ERROR_THRESHOLD > $min_err) is wrong!"
+            exit
+        # 如果误差阈值小于当前最大误差,大于最小误差,那么修改start_rate、end_rate以及rate_array.
+        elif [ $(echo "$ERROR_THRESHOLD < $max_err" | bc) -eq 1 ];
+        then
+            new_start=$(echo $max_err $min_err $ERROR_THRESHOLD $end_rate $start_rate | awk '{ printf("%d", ($1-$3)/($1-$2)*($4-$5)+$5 +1); }'); # 最后的加1表示向上取值
+            # echo "max:" $max_err "min:" $min_err "threshold:" $ERROR_THRESHOLD "end:" $end_rate "start:" $start_rate "new start:" $new_start;
+            start_rate=$new_start;
+            length_rate=`expr $end_rate \- $start_rate`;
+            if [ $length_rate -lt 8 ]; then
+                echo "lnlamp: The mixed-precision configurations cannot be found within the specified error threshold!"
+                exit;
+            else
+                stride=`expr $length_rate \/ 8`;
+            fi
+            unset rate_array
+            rate_array=()
+            rate_array+=($start_rate);
+            for ((i=1;i<8;i++))
+            do
+                temp=`expr $i \* $stride \+ $start_rate`;
+                rate_array+=($temp); 
+            done
+            rate_array+=($end_rate);
+            # echo "start:" $start_rate ",length:" $length_rate ",stride:" $stride ",rate range:"$(echo ${rate_array[*]}) ".";
+        # 如果都不是以上两种情况，说明误差阈值大于当前最大误差，[0,99]的比例都是可以的，那么保持默认的配置
+        fi
+        
+        if [ $DEBUG_TYPE -eq 1 ]; then
+            echo "lnlamp: message: The Best fit range is: [$start_rate, $end_rate], when ERROR THRESHOLD is $ERROR_THRESHOLD, the ERROR TYPE is $ERROR_TYPE (the type max-err is $max_err). "
+        fi
+    fi
+    ERROR_READY=true
+fi
+end=`date +%s%N`
+time_error=$((($end-$start)/1000000)) # 毫秒
+
+
+
 #  Step2: 如果输入解析成功,那么开始进行Profiling
 # 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
 start=`date +%s%N`
-time_array=()
-if [ $DEBUG_TYPE -eq 1 ];then
-    echo "lnlamp: message: The Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
-    echo "lnlamp: message: The   PPCG   FLAGS is: ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
-    echo "lnlamp: message: The  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
-fi
-# init variance of test is 100 
-VARIANCE_TEST=100;
-# 计算执行时间的方差函数,这一步要多吃调用到
+# 计算执行时间的方差函数,这一步要多次调用到
 compute_mean_exec_time()
 {
     file="$1";
@@ -455,8 +594,17 @@ compute_mean_exec_time()
 }
 
 # 进行编译运行的Profiling过程
-if [[ ${PARAMETER_READY} = true ]]; 
-then
+if [[ ${ERROR_READY} = true ]]; then
+    # 设置必要的参数
+    time_array=()
+    # init variance of test is 100 
+    VARIANCE_TEST=100;
+    if [ $DEBUG_TYPE -eq 1 ]; then
+        echo "lnlamp: message: The Profiling Rate is: ${rate_array[0]} ${rate_array[1]} ${rate_array[2]} ${rate_array[3]} ${rate_array[4]} ${rate_array[5]} ${rate_array[6]} ${rate_array[7]} ${rate_array[8]}."
+        echo "lnlamp: message: The   PPCG   FLAGS is: ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS}."
+        echo "lnlamp: message: The  Compiler  CMD is: ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${EXIT_FLAGS}."
+    fi
+
     # 并行地进行PPCG_Codegen并编译
     {
         ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
@@ -641,11 +789,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
-                { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper 2> /dev/null ; } 2> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe < $input > ____lnlamp_output_upper 2> /dev/null ; } 2> ____lnlamp_timing_upper
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_ppcg__.exe < $input >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
+                    { ${timing} ./____lnlamp_ppcg__.exe < $input >> ____lnlamp_output_upper 2> /dev/null ; } 2>> ____lnlamp_timing_upper
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -663,11 +811,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
-                { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 2> /dev/null ; } 2> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input > ____lnlamp_output_mix_0 2> /dev/null ; } 2> ____lnlamp_timing_mix_0
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
+                    { ${timing} ./____lnlamp_${rate_array[0]}__.exe < $input >> ____lnlamp_output_mix_0 2> /dev/null ; } 2>> ____lnlamp_timing_mix_0
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -686,11 +834,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
-                { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 2> /dev/null ; } 2> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input > ____lnlamp_output_mix_1 2> /dev/null ; } 2> ____lnlamp_timing_mix_1
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
+                    { ${timing} ./____lnlamp_${rate_array[1]}__.exe < $input >> ____lnlamp_output_mix_1 2> /dev/null ; } 2>> ____lnlamp_timing_mix_1
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -708,11 +856,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
-                { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 2> /dev/null ; } 2> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input > ____lnlamp_output_mix_2 2> /dev/null ; } 2> ____lnlamp_timing_mix_2
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
+                    { ${timing} ./____lnlamp_${rate_array[2]}__.exe < $input >> ____lnlamp_output_mix_2 2> /dev/null ; } 2>> ____lnlamp_timing_mix_2
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -731,11 +879,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
-                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 2> /dev/null ; } 2> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input > ____lnlamp_output_mix_3 2> /dev/null ; } 2> ____lnlamp_timing_mix_3
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+                    { ${timing} ./____lnlamp_${rate_array[3]}__.exe < $input >> ____lnlamp_output_mix_3 2> /dev/null ; } 2>> ____lnlamp_timing_mix_3
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -753,11 +901,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
-                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 2> /dev/null ; } 2> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input > ____lnlamp_output_mix_4 2> /dev/null ; } 2> ____lnlamp_timing_mix_4
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+                    { ${timing} ./____lnlamp_${rate_array[4]}__.exe < $input >> ____lnlamp_output_mix_4 2> /dev/null ; } 2>> ____lnlamp_timing_mix_4
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -776,11 +924,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
-                { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 2> /dev/null ; } 2> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input > ____lnlamp_output_mix_5 2> /dev/null ; } 2> ____lnlamp_timing_mix_5
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
+                    { ${timing} ./____lnlamp_${rate_array[5]}__.exe < $input >> ____lnlamp_output_mix_5 2> /dev/null ; } 2>> ____lnlamp_timing_mix_5
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -798,11 +946,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
-                { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 2> /dev/null ; } 2> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input > ____lnlamp_output_mix_6 2> /dev/null ; } 2> ____lnlamp_timing_mix_6
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
+                    { ${timing} ./____lnlamp_${rate_array[6]}__.exe < $input >> ____lnlamp_output_mix_6 2> /dev/null ; } 2>> ____lnlamp_timing_mix_6
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -821,11 +969,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
-                { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 2> /dev/null ; } 2> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input > ____lnlamp_output_mix_7 2> /dev/null ; } 2> ____lnlamp_timing_mix_7
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
+                    { ${timing} ./____lnlamp_${rate_array[7]}__.exe < $input >> ____lnlamp_output_mix_7 2> /dev/null ; } 2>> ____lnlamp_timing_mix_7
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -843,11 +991,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
-                { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 2> /dev/null ; } 2> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input > ____lnlamp_output_mix_8 2> /dev/null ; } 2> ____lnlamp_timing_mix_8
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
+                    { ${timing} ./____lnlamp_${rate_array[8]}__.exe < $input >> ____lnlamp_output_mix_8 2> /dev/null ; } 2>> ____lnlamp_timing_mix_8
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -870,11 +1018,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
-                { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper ; } 2> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper 2> /dev/null ; } 2> ____lnlamp_timing_upper
+                { ${timing} ./____lnlamp_ppcg__.exe > ____lnlamp_output_upper 2> /dev/null ; } 2> ____lnlamp_timing_upper
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_ppcg__.exe >> ____lnlamp_output_upper ; } 2>> ____lnlamp_timing_upper
+                    { ${timing} ./____lnlamp_ppcg__.exe >> ____lnlamp_output_upper 2> /dev/null ; } 2>> ____lnlamp_timing_upper
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -892,11 +1040,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
-                { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 ; } 2> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 2> /dev/null ; } 2> ____lnlamp_timing_mix_0
+                { ${timing} ./____lnlamp_${rate_array[0]}__.exe > ____lnlamp_output_mix_0 2> /dev/null ; } 2> ____lnlamp_timing_mix_0
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[0]}__.exe >> ____lnlamp_output_mix_0 ; } 2>> ____lnlamp_timing_mix_0
+                    { ${timing} ./____lnlamp_${rate_array[0]}__.exe >> ____lnlamp_output_mix_0 2> /dev/null ; } 2>> ____lnlamp_timing_mix_0
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -915,11 +1063,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
-                { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 ; } 2> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 2> /dev/null ; } 2> ____lnlamp_timing_mix_1
+                { ${timing} ./____lnlamp_${rate_array[1]}__.exe > ____lnlamp_output_mix_1 2> /dev/null ; } 2> ____lnlamp_timing_mix_1
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[1]}__.exe >> ____lnlamp_output_mix_1 ; } 2>> ____lnlamp_timing_mix_1
+                    { ${timing} ./____lnlamp_${rate_array[1]}__.exe >> ____lnlamp_output_mix_1 2> /dev/null ; } 2>> ____lnlamp_timing_mix_1
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -937,11 +1085,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
-                { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 ; } 2> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 2> /dev/null ; } 2> ____lnlamp_timing_mix_2
+                { ${timing} ./____lnlamp_${rate_array[2]}__.exe > ____lnlamp_output_mix_2 2> /dev/null ; } 2> ____lnlamp_timing_mix_2
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[2]}__.exe >> ____lnlamp_output_mix_2 ; } 2>> ____lnlamp_timing_mix_2
+                    { ${timing} ./____lnlamp_${rate_array[2]}__.exe >> ____lnlamp_output_mix_2 2> /dev/null ; } 2>> ____lnlamp_timing_mix_2
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -960,11 +1108,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
-                { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 ; } 2> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 2> /dev/null ; } 2> ____lnlamp_timing_mix_3
+                { ${timing} ./____lnlamp_${rate_array[3]}__.exe > ____lnlamp_output_mix_3 2> /dev/null ; } 2> ____lnlamp_timing_mix_3
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[3]}__.exe >> ____lnlamp_output_mix_3 ; } 2>> ____lnlamp_timing_mix_3
+                    { ${timing} ./____lnlamp_${rate_array[3]}__.exe >> ____lnlamp_output_mix_3 2> /dev/null ; } 2>> ____lnlamp_timing_mix_3
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -982,11 +1130,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
-                { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 ; } 2> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 2> /dev/null ; } 2> ____lnlamp_timing_mix_4
+                { ${timing} ./____lnlamp_${rate_array[4]}__.exe > ____lnlamp_output_mix_4 2> /dev/null ; } 2> ____lnlamp_timing_mix_4
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[4]}__.exe >> ____lnlamp_output_mix_4 ; } 2>> ____lnlamp_timing_mix_4
+                    { ${timing} ./____lnlamp_${rate_array[4]}__.exe >> ____lnlamp_output_mix_4 2> /dev/null ; } 2>> ____lnlamp_timing_mix_4
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -1005,11 +1153,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
-                { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 ; } 2> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 2> /dev/null ; } 2> ____lnlamp_timing_mix_5
+                { ${timing} ./____lnlamp_${rate_array[5]}__.exe > ____lnlamp_output_mix_5 2> /dev/null ; } 2> ____lnlamp_timing_mix_5
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[5]}__.exe >> ____lnlamp_output_mix_5 ; } 2>> ____lnlamp_timing_mix_5
+                    { ${timing} ./____lnlamp_${rate_array[5]}__.exe >> ____lnlamp_output_mix_5 2> /dev/null ; } 2>> ____lnlamp_timing_mix_5
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -1027,11 +1175,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
-                { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 ; } 2> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 2> /dev/null ; } 2> ____lnlamp_timing_mix_6
+                { ${timing} ./____lnlamp_${rate_array[6]}__.exe > ____lnlamp_output_mix_6 2> /dev/null ; } 2> ____lnlamp_timing_mix_6
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[6]}__.exe >> ____lnlamp_output_mix_6 ; } 2>> ____lnlamp_timing_mix_6
+                    { ${timing} ./____lnlamp_${rate_array[6]}__.exe >> ____lnlamp_output_mix_6 2> /dev/null ; } 2>> ____lnlamp_timing_mix_6
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -1050,11 +1198,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
-                { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 ; } 2> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 2> /dev/null ; } 2> ____lnlamp_timing_mix_7
+                { ${timing} ./____lnlamp_${rate_array[7]}__.exe > ____lnlamp_output_mix_7 2> /dev/null ; } 2> ____lnlamp_timing_mix_7
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[7]}__.exe >> ____lnlamp_output_mix_7 ; } 2>> ____lnlamp_timing_mix_7
+                    { ${timing} ./____lnlamp_${rate_array[7]}__.exe >> ____lnlamp_output_mix_7 2> /dev/null ; } 2>> ____lnlamp_timing_mix_7
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -1072,11 +1220,11 @@ then
             VARIANCE_TEST=100;
             while [ `echo "$VARIANCE_TEST > $VARIANCE_ACCEPTED" | bc` -eq 1 ] 
             do
-                { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
-                { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 ; } 2> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 2> /dev/null ; } 2> ____lnlamp_timing_mix_8
+                { ${timing} ./____lnlamp_${rate_array[8]}__.exe > ____lnlamp_output_mix_8 2> /dev/null ; } 2> ____lnlamp_timing_mix_8
                 for ((i=1; i<$frequency; i++))
                 do
-                    { ${timing} ./____lnlamp_${rate_array[8]}__.exe >> ____lnlamp_output_mix_8 ; } 2>> ____lnlamp_timing_mix_8
+                    { ${timing} ./____lnlamp_${rate_array[8]}__.exe >> ____lnlamp_output_mix_8 2> /dev/null ; } 2>> ____lnlamp_timing_mix_8
                 done
                 if [ $timing_type -eq 1 ];
                 then
@@ -1456,15 +1604,15 @@ then
     time_array+=( $(echo $time_upper $time_mix_7 | awk '{ printf("%.10f", $1-$2 ); }') );
     time_array+=( $(echo $time_upper $time_mix_8 | awk '{ printf("%.10f", $1-$2 ); }') );
 
-    python3 $lnlamp_dir/lnlamp_internal_usage.py ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]} ${rate_array[5]} ${time_array[5]} ${rate_array[6]} ${time_array[6]} ${rate_array[7]} ${time_array[7]} ${rate_array[8]} ${time_array[8]} > lnlamp_internal_usage.py.log 2>&1
+    python3 $lnlamp_dir/lnlamp_internal_curve_fitting.py ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]} ${rate_array[5]} ${time_array[5]} ${rate_array[6]} ${time_array[6]} ${rate_array[7]} ${time_array[7]} ${rate_array[8]} ${time_array[8]} >> lnlamp_internal_usage.py.log 2>&1
     if [ $? -ne 0 ]; then
-        echo "lnlamp: error: Quadratic curve fitting(lnlamp_internal_usage.py) problems encountered!"
+        echo "lnlamp: error: Quadratic curve fitting(lnlamp_internal_curve_fitting.py) problems encountered!"
         echo "lnlamp: Quadratic curve fitting parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]} ${rate_array[5]} ${time_array[5]} ${rate_array[6]} ${time_array[6]} ${rate_array[7]} ${time_array[7]} ${rate_array[8]} ${time_array[8]} "
         exit
     fi
     #如果文件不存在，创建文件夹
     if [ ! -e "lnlamp_temp_result.txt" ]; then
-        echo "lnlamp: error: Quadratic curve fitting(lnlamp_internal_usage.py) can't calculate the result!!!"
+        echo "lnlamp: error: Quadratic curve fitting(lnlamp_internal_curve_fitting.py) can't calculate the result!!!"
     else
         rows=$(awk 'END{print NR}' lnlamp_temp_result.txt);
         if [ 4 -eq $rows ];
@@ -1479,119 +1627,106 @@ then
             equ_b=$(echo ${poly_coeff[1]} | awk '{ printf("%.10f",$1); }');
             equ_c=$(echo ${poly_coeff[0]} | awk '{ printf("%.10f",$1); }');
         else
-            echo "lnlamp: error: The result of the calculation in quadratic curve fitting(lnlamp_internal_usage.py) is wrong!!!"
+            echo "lnlamp: error: The result of the calculation in quadratic curve fitting(lnlamp_internal_curve_fitting.py) is wrong!!!"
         fi
     fi
+    rm -f lnlamp_temp_result.txt  lnlamp_internal_usage.py.log
     
     if [ $DEBUG_TYPE -eq 1 ];then
         echo "lnlamp: message: Quadratic curve fitting parameter is: ${rate_array[0]} ${time_array[0]} ${rate_array[1]} ${time_array[1]} ${rate_array[2]} ${time_array[2]} ${rate_array[3]} ${time_array[3]} ${rate_array[4]} ${time_array[4]} ${rate_array[5]} ${time_array[5]} ${rate_array[6]} ${time_array[6]} ${rate_array[7]} ${time_array[7]} ${rate_array[8]} ${time_array[8]}. "
         echo "lnlamp: message: Quadratic curve fitting's result  is: pi(r) = $equ_a * r^2 + $equ_b * r + $equ_c, the extreme value point is located at r = $extremeValue. "
     fi
+    PROFILING_READY=true
 fi
 end=`date +%s%N`
 time_profiling=$((($end-$start)/1000000)) # 毫秒
 
 
-
-# Step3: 根据抛物线和Profiling结果,确定最合适的Rate值
-# 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
-start=`date +%s%N`
-# 3.1 先确定最合适的Rate的可能取值
-best_rate=()
-amp_type=-2
-# 如果开口向下且对称轴小于0、或者开头向上且对称轴大于99,那么就是收益模型单调下降.
-if ([ $(echo "$extremeValue < $start_rate" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue > $end_rate" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
-then
-    best_rate+=( $start_rate )
-    amp_type=1
-# 如果开口向下且对称轴大于99、或者开头向上且对称轴小于0,那么就是收益模型单调上升.
-elif ([ $(echo "$extremeValue > $end_rate" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue < $start_rate" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
-then
-    best_rate+=( $end_rate )
-    amp_type=2
-# 如果对称轴介于0和99中间,且开头是向下的话,那么对称轴附近的比例值就是结果
-elif [ $(echo "$equ_a < 0" | bc) -eq 1 ];
-then
-    best_rate+=( $(echo $extremeValue | cut -d '.' -f1) );
-    amp_type=0
-# 如果对称轴介于0和99中间,且开头是向上的话,那么边界的比例值就是结果.
-else
-    best_rate+=( $start_rate )
-    best_rate+=( $end_rate )
-    amp_type=-1
-fi
-# 3.2 对可能的取值做预测(推理) [也可以做Profiling(注释掉的代码部分)]
-best_incomes=()
-for rate in ${best_rate[@]}; 
-do
-    income=( $(echo $rate $equ_a $equ_b $equ_c | awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
-    # 如果推理出来的极值点恰好是Profiling时的点的话，那么直接用profiling的结果即可.
-    for ((i=0;i<${#rate_array[@]};i++));
-    do
-        if [ ${rate_array[$i]} -eq $rate ]; then
-            income=${time_array[$i]};
-            break;
-        fi
-    done
-    if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: The predicted time benefit  is: ${income}s, when rate =${rate}. "
-    fi
-    best_incomes+=( $income )
-    unset income
-done
-end=`date +%s%N`
-time_inference=$((($end-$start)/1000000)) # 毫秒
-# 打印耗时情况
-if [ $DEBUG_TYPE -eq 1 ];then
-    echo "lnlamp: message: The profiling timeConsuming is: ${time_profiling}ms, the inference timeConsuming is: ${time_inference}ms. "
-    echo ""
-fi
-
-
-
-# Step4: 打印最终结果.
-# 设置是否有收益的边界为-1微秒
-bound_earnings=-0.000001
-# 如果是单调上升的情况
-if [ ${amp_type} -eq 2 ];
-then
-    echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
-    # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
-    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "lnlamp: error: PPCG Codegen meets errors at the end."
-        echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
-        exit
-    fi
-    echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
-
-    # 临时加一个语句，生成schedule+mix的版本
-    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-    # 临时加一个语句，生成只进行mix的版本
-    ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1  
-# 如果是单调下降的情况
-elif [ ${amp_type} -eq 1 ];
-then
-    echo "The performance of the lnlamp programs decreases monotonically with increasing Rate, so the Rate $start_rate is the best. "
-    # 生成最合适比例下对应的混合精度代码提供给用户
-    ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "lnlamp: error: PPCG Codegen meets errors at the end."
-        echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
-        exit
-    fi
-    echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
-    
-    # 临时加一个语句，生成schedule+mix的版本
-    ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-    # 临时加一个语句，生成只进行mix的版本
-    ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
-# 如果是二次抛物线，开口向下的情况
-elif [ ${amp_type} -eq 0 ];
-then
-    if [ $(echo "${best_incomes[@]} > ${bound_earnings}" | bc) -eq 1 ];
+# 推理并获取最终结果
+if [[ ${PROFILING_READY} = true ]]; then
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Step3: 根据抛物线和Profiling结果,确定最合适的Rate值
+    # 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
+    start=`date +%s%N`
+    # 3.1 先确定最合适的Rate的可能取值
+    best_rate=()
+    amp_type=-2
+    # 如果开口向下且对称轴小于0、或者开头向上且对称轴大于99,那么就是收益模型单调下降.
+    if ([ $(echo "$extremeValue < $start_rate" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue > $end_rate" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
     then
-        echo "The performance of the lnlamp program shows an open-down quadratic relationship with Rate, so the integer value around Rate($extremeValue) is probably the most appropriate ratio. "
+        best_rate+=( $start_rate )
+        amp_type=1
+    # 如果开口向下且对称轴大于99、或者开头向上且对称轴小于0,那么就是收益模型单调上升.
+    elif ([ $(echo "$extremeValue > $end_rate" | bc) -eq 1 ] && [ $(echo "$equ_a < 0" | bc) -eq 1 ]) || ([ $(echo "$extremeValue < $start_rate" | bc) -eq 1 ] && [ $(echo "$equ_a > 0" | bc) -eq 1 ]);
+    then
+        best_rate+=( $end_rate )
+        amp_type=2
+    # 如果对称轴介于0和99中间,且开头是向下的话,那么对称轴附近的比例值就是结果
+    elif [ $(echo "$equ_a < 0" | bc) -eq 1 ];
+    then
+        best_rate+=( $(echo $extremeValue | cut -d '.' -f1) );
+        amp_type=0
+    # 如果对称轴介于0和99中间,且开头是向上的话,那么边界的比例值就是结果.
+    else
+        best_rate+=( $start_rate )
+        best_rate+=( $end_rate )
+        amp_type=-1
+    fi
+    # 3.2 对可能的取值做预测(推理) [也可以做Profiling(注释掉的代码部分)]
+    best_incomes=()
+    for rate in ${best_rate[@]}; 
+    do
+        income=( $(echo $rate $equ_a $equ_b $equ_c | awk '{ printf("%.10f", $2*$1*$1+$3*$1+$4 ); }') );
+        # 如果推理出来的极值点恰好是Profiling时的点的话，那么直接用profiling的结果即可.
+        for ((i=0;i<${#rate_array[@]};i++));
+        do
+            if [ ${rate_array[$i]} -eq $rate ]; then
+                income=${time_array[$i]};
+                break;
+            fi
+        done
+        if [ $DEBUG_TYPE -eq 1 ];then
+            echo "lnlamp: message: The predicted time benefit  is: ${income}s, when rate =${rate}. "
+        fi
+        best_incomes+=( $income )
+        unset income
+    done
+    end=`date +%s%N`
+    time_inference=$((($end-$start)/1000000)) # 毫秒
+    # 打印耗时情况
+    if [ $DEBUG_TYPE -eq 1 ];then
+        echo "lnlamp: message: The profiling timeConsuming is: ${time_profiling}ms, the error caluting timeConsuming is: ${time_error}ms, the inference timeConsuming is: ${time_inference}ms. "
+        echo ""
+    fi
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Step4: 打印最终结果.
+    # 设置是否有收益的边界为-1微秒
+    bound_earnings=-0.000001
+    # 如果是单调上升的情况
+    if [ ${amp_type} -eq 2 ];
+    then
+        echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+        # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors at the end."
+            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+            exit
+        fi
+        echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
+
+        # 临时加一个语句，生成schedule+mix的版本
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # 临时加一个语句，生成只进行mix的版本
+        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1  
+    # 如果是单调下降的情况
+    elif [ ${amp_type} -eq 1 ];
+    then
+        echo "The performance of the lnlamp programs decreases monotonically with increasing Rate, so the Rate $start_rate is the best. "
         # 生成最合适比例下对应的混合精度代码提供给用户
         ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
@@ -1605,74 +1740,95 @@ then
         ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
         ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
-    else
-        echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
-        # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
-            exit
-        fi
-        echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
-        
-        # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-        # 临时加一个语句，生成只进行mix的版本
-        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
-    fi
-# 如果是二次抛物线，开口向上的情况
-elif [ ${amp_type} -eq -1 ];
-then
-    max_income=-60
-    max_income_id=-1.0
-    # 确定一下最大收益及其对应的下标
-    for ((i=0;i<${#best_incomes[@]};i++));
-    do
-        if [ $(echo "${best_incomes[$i]} > ${max_income}" | bc) -eq 1 ];
-        then
-            max_income=${best_incomes[$i]};
-            max_income_id=$i;
-        fi
-    done
-    # 根据最大收益,确定适不适合做混合精度
-    if [ $(echo "${max_income} > ${bound_earnings}" | bc) -eq 1 ];
+    # 如果是二次抛物线，开口向下的情况
+    elif [ ${amp_type} -eq 0 ];
     then
-        echo "The performance of the lnlamp program shows an open-upward quadratic curve relationship with Rate, so the integer value around Rate (${best_rate[$max_income_id]}) is probably the most appropriate ratio. "  
-        # 生成最合适比例下对应的混合精度代码提供给用户
-        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
-            exit
+        if [ $(echo "${best_incomes[@]} > ${bound_earnings}" | bc) -eq 1 ];
+        then
+            echo "The performance of the lnlamp program shows an open-down quadratic relationship with Rate, so the integer value around Rate($extremeValue) is probably the most appropriate ratio. "
+            # 生成最合适比例下对应的混合精度代码提供给用户
+            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: The PPCG CMD is : ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
+            
+            # 临时加一个语句，生成schedule+mix的版本
+            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # 临时加一个语句，生成只进行mix的版本
+            ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+        else
+            echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+            # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
+            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
+            
+            # 临时加一个语句，生成schedule+mix的版本
+            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # 临时加一个语句，生成只进行mix的版本
+            ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
         fi
-        echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
-        
-        # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-        # 临时加一个语句，生成只进行mix的版本
-        ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+    # 如果是二次抛物线，开口向上的情况
+    elif [ ${amp_type} -eq -1 ];
+    then
+        max_income=-60
+        max_income_id=-1.0
+        # 确定一下最大收益及其对应的下标
+        for ((i=0;i<${#best_incomes[@]};i++));
+        do
+            if [ $(echo "${best_incomes[$i]} > ${max_income}" | bc) -eq 1 ];
+            then
+                max_income=${best_incomes[$i]};
+                max_income_id=$i;
+            fi
+        done
+        # 根据最大收益,确定适不适合做混合精度
+        if [ $(echo "${max_income} > ${bound_earnings}" | bc) -eq 1 ];
+        then
+            echo "The performance of the lnlamp program shows an open-upward quadratic curve relationship with Rate, so the integer value around Rate (${best_rate[$max_income_id]}) is probably the most appropriate ratio. "  
+            # 生成最合适比例下对应的混合精度代码提供给用户
+            ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
+            
+            # 临时加一个语句，生成schedule+mix的版本
+            ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # 临时加一个语句，生成只进行mix的版本
+            ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+        else
+            echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
+            # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
+            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "lnlamp: error: PPCG Codegen meets errors at the end."
+                echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
+                exit
+            fi
+            echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
+            
+            # 临时加一个语句，生成schedule+mix的版本
+            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # 临时加一个语句，生成只进行mix的版本
+            ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+        fi
     else
-        echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
-        # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file} > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            echo "lnlamp: error: PPCG Codegen meets errors at the end."
-            echo "lnlamp: error: ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}."
-            exit
-        fi
-        echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
-        
-        # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-        # 临时加一个语句，生成只进行mix的版本
-        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+        echo "lnlamp: error: There was a problem printing the final results, please contact the program developer! "
     fi
-else
-    echo "lnlamp: error: There was a problem printing the final results, please contact the program developer! "
-fi
-echo ""
+    echo ""
 
-# 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
-ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
-ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
+    # 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
+    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
+    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+fi
