@@ -40,16 +40,7 @@ CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS -DPOLYBENCH_STACK_ARRAYS"
 EXIT_FLAGS="-lm"
-# TODO: 配置PPCG CodeGen时的一些自定义设置(Tile已经支持自定义了)
-PPCG_TILE_FLAGS=""
-PPCG_OPENMP_FLAGS=""
-PPCG_ISL_FLAGS=""
-PPCG_SCHEDULE_FLAGS=""
-if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
-then
-    CFLAGS="$CFLAGS -fopenmp"
-    num_threads=4
-fi
+
 
 # 源文件参数
 src_args=()
@@ -66,12 +57,24 @@ end_rate=99
 # 是否指定tile的Flags
 specify_tile_flag=0
 tile_size=""
+PPCG_TILE_FLAGS=""
+# 是否指定openmp的Flags(默认线程数为4)
+specify_openmp_flag=0
+openmp_nums=""
+PPCG_OPENMP_FLAGS=""
+num_threads=4
+if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
+then
+    CFLAGS="$CFLAGS -fopenmp"
+fi
 # 是否指定schedule的Flags
 specify_sched_flags=0
 sched_algo=""
+PPCG_SCHEDULE_FLAGS=""
 # 是否指定ISL库的Flags
 specify_isl_flags=0
 isl_flags=""
+PPCG_ISL_FLAGS=""
 # c++ Flags
 cpp_flag=0
 # 临时profiling的后缀
@@ -79,12 +82,15 @@ prf_suf=""
 # Profiling的次数(不包含数据预热）,必须为10，暂不支持修改
 frequency=10
 readonly frequency
-# TODO: 配置三个参数的自定义支持
+# TODO: 这里还差两个配置参数的自定义支持
 # Maximal variance accepted between the 10 median runs for performance results.
 VARIANCE_ACCEPTED=10;
 # 设定误差阈值,及其类型(1-最大绝对误差(默认)，2-最大相对误差，3-平均绝对误差，4-平均相对误差)
-ERROR_THRESHOLD=0.0001
 ERROR_TYPE=1
+# 是否指定error_threshold的Flags
+specify_error_threshold_flags=0
+err_thr=""
+ERROR_THRESHOLD=0.0001
 
 # Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
@@ -176,8 +182,10 @@ do
             echo "Options:"
             echo "    -s | --specify-output    specify the target file"
             echo "    -r | --rate-array        specify the rate-array of profiling(default is:$(echo ${rate_array[*]}))"
+            echo "    -e | --error-threshold   specify the error-threshold(default is:$ERROR_THRESHOLD)"
             echo "    -v | --version           lnlamp version"
             echo "    -t | --tile              lnlamp specify the tile-sizes(default none) in PPCG"
+            echo "    -o | --openmp            lnlamp specify uses the --openmp in PPCG, and multi-threads(default is:$num_threads) running."
             echo "    -a | --sched-algo        lnlamp specify the schedule-algorithm to isl|feautrier|no in PPCG, default is isl"
             echo "    -i | --isl-flags         lnlamp specify the flags in isl library of PPCG, default is null"
             echo ""
@@ -191,6 +199,18 @@ do
             echo ""
             shift
             exit
+            ;;
+        -e|--error-threshold)
+            parameter_count=`expr $parameter_count + 1`
+            # 如果指定了error-threshold的Flags,则flag设为1
+            specify_error_threshold_flags=1
+            shift
+            ;;
+        -o|--openmp)
+            parameter_count=`expr $parameter_count + 1`
+            # 如果指定了openmp的Flags,则flag设为1
+            specify_openmp_flag=1
+            shift
             ;;
         *)
             parameter_count=`expr $parameter_count + 1`
@@ -219,6 +239,16 @@ do
             then
                 isl_flags=$1
                 specify_isl_flags=2
+                shift
+            elif [ $specify_error_threshold_flags -eq 1 ];
+            then
+                err_thr=$1
+                specify_error_threshold_flags=2
+                shift
+            elif [ $specify_openmp_flag -eq 1 ];
+            then
+                openmp_nums=$1
+                specify_openmp_flag=2
                 shift
             else
                 echo ""
@@ -322,6 +352,25 @@ then
     fi
 fi
 
+# 设置多线程及其数量
+if [ $specify_openmp_flag -ge 1 ];
+then
+    # 更新PPCG和编译器的FLAGS
+    PPCG_OPENMP_FLAGS="--openmp"
+    if [ "$PPCG_OPENMP_FLAGS" = "--openmp" ];
+    then
+        CFLAGS="$CFLAGS -fopenmp"
+    fi
+
+    # 如果设置了'-o',但是没有设置'num-threads',则进行警告
+    if [ $specify_openmp_flag -eq 1 ];
+    then
+        echo "lnlamp: warning: Missing the number of multi-threads after '-o', number of multi-threads be reset to $num_threads "
+    else
+        num_threads=(${openmp_nums})
+    fi
+fi
+
 # 设置PPCG的调度变换算法
 if [ $specify_sched_flags -ge 1 ];
 then
@@ -362,11 +411,25 @@ then
         PPCG_ISL_FLAGS+="${isl_flags}"
     fi
 fi
+
+# 设置error-threshold
+if [ $specify_error_threshold_flags -ge 1 ];
+then
+    # 如果设置了'-e',但是没有设置'error-threshold',则进行警告
+    if [ $specify_error_threshold_flags -eq 1 ];
+    then
+        echo "lnlamp: warning: missing error-threshold string after '-e', the error-threshold will be reset to $ERROR_THRESHOLD."
+    else
+        ERROR_THRESHOLD=(${err_thr})
+    fi
+fi
 # 释放flag变量
 unset specify_output_flag
 unset specify_tile_flag
+unset specify_openmp_flag
 unset specify_sched_flags
 unset specify_isl_flags
+unset specify_error_threshold_flags
 
 
 
@@ -778,7 +841,11 @@ if [[ ${ERROR_READY} = true ]]; then
 
     # Profiling (default input file is input.txt)
     # 设置线程的数量
-    export OMP_NUM_THREADS=$num_threads
+    export OMP_NUM_THREADS=$num_threads;
+    if [ "$PPCG_OPENMP_FLAGS" = "--openmp" -a $DEBUG_TYPE -eq 1 ];
+    then
+        echo "lnlamp: message: Profiling will using $OMP_NUM_THREADS threads to run."
+    fi
     if [ -e $input ];
     then
         if [ $DEBUG_TYPE -eq 1 ];then
