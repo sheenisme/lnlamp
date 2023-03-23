@@ -84,13 +84,13 @@ frequency=10
 readonly frequency
 # TODO: 这里还差两个配置参数的自定义支持
 # Maximal variance accepted between the 10 median runs for performance results.
-VARIANCE_ACCEPTED=10;
+VARIANCE_ACCEPTED=15;
 # 设定误差阈值,及其类型(1-最大绝对误差(默认)，2-最大相对误差，3-平均绝对误差，4-平均相对误差)
 ERROR_TYPE=1
 # 是否指定error_threshold的Flags
 specify_error_threshold_flags=0
 err_thr=""
-ERROR_THRESHOLD=0.0001
+ERROR_THRESHOLD=0.1
 
 # Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
@@ -548,7 +548,7 @@ if [[ ${PARAMETER_READY} = true ]]; then
             start_rate=$new_start;
             length_rate=`expr $end_rate \- $start_rate`;
             if [ $length_rate -lt 8 ]; then
-                echo "lnlamp: The mixed-precision configurations cannot be found within the specified error threshold!"
+                echo "lnlamp: The mixed-precision configurations cannot be found within the specified error threshold($ERROR_THRESHOLD, because the lower precision max error is $max_err)!"
                 exit;
             else
                 stride=`expr $length_rate \/ 8`;
