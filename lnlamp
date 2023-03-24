@@ -84,13 +84,13 @@ frequency=10
 readonly frequency
 # TODO: 这里还差两个配置参数的自定义支持
 # Maximal variance accepted between the 10 median runs for performance results.
-VARIANCE_ACCEPTED=15;
+VARIANCE_ACCEPTED=20;
 # 设定误差阈值,及其类型(1-最大绝对误差(默认)，2-最大相对误差，3-平均绝对误差，4-平均相对误差)
 ERROR_TYPE=1
 # 是否指定error_threshold的Flags
 specify_error_threshold_flags=0
 err_thr=""
-ERROR_THRESHOLD=0.1
+ERROR_THRESHOLD=0.001
 
 # Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
@@ -500,7 +500,7 @@ if [[ ${PARAMETER_READY} = true ]]; then
             echo "lnlamp: error: Calculate errors(lnlamp_internal_calculate_errors.py) problems encountered!"
             exit
         fi
-        rm -f ____lnlamp_error_double.res ____lnlamp_error_float.res
+        rm -f ____lnlamp_error_float.res
 
         # 获取各种误差数据
         double_no=`cat lnlamp_internal_usage.py.log | head -n 1`;
@@ -1802,7 +1802,8 @@ if [[ ${PROFILING_READY} = true ]]; then
             exit
         fi
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
-        
+        FINAL_RESULT_READY=true
+
         # 临时加一个语句，生成schedule+mix的版本
         ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
         # 临时加一个语句，生成只进行mix的版本
@@ -1821,7 +1822,8 @@ if [[ ${PROFILING_READY} = true ]]; then
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
-            
+            FINAL_RESULT_READY=true
+
             # 临时加一个语句，生成schedule+mix的版本
             ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
             # 临时加一个语句，生成只进行mix的版本
@@ -1868,7 +1870,8 @@ if [[ ${PROFILING_READY} = true ]]; then
                 exit
             fi
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
-            
+            FINAL_RESULT_READY=true
+
             # 临时加一个语句，生成schedule+mix的版本
             ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
             # 临时加一个语句，生成只进行mix的版本
@@ -1892,10 +1895,87 @@ if [[ ${PROFILING_READY} = true ]]; then
     else
         echo "lnlamp: error: There was a problem printing the final results, please contact the program developer! "
     fi
-    echo ""
 
     # 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
     ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
     ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 fi
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Step5: 验证结果程序的误差情况.
+# 
+if [[ ${FINAL_RESULT_READY} = true ]] ; then
+    # 并行地编译amp最终的代码
+    ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${target_file} -o  ____lnlamp_amp_final_res__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Compiling meets errors."
+        echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${target_file} -o  ____lnlamp_amp_final_res__.exe ${EXIT_FLAGS}"
+        exit
+    fi
+    
+    # 执行amp最终程序，获取其计算结果
+    if [ -e $input ];
+    then
+        { ./____lnlamp_amp_final_res__.exe  < $input 2> ____lnlamp_error_amp_final__.res  > /dev/null; } 2> /dev/null
+    else
+        { ./____lnlamp_amp_final_res__.exe           2> ____lnlamp_error_amp_final__.res  > /dev/null; } 2> /dev/null
+    fi
+    rm -f ____lnlamp_amp_final_res__.exe
+
+    # 删除非计算结果的那些字符串
+    sed -i "/==BEGIN DUMP_ARRAYS==/d"  ____lnlamp_error_amp_final__.res
+    sed -i "/==END   DUMP_ARRAYS==/d"  ____lnlamp_error_amp_final__.res
+    sed -i "/begin dump/d"             ____lnlamp_error_amp_final__.res 
+    sed -i "/end   dump/d"             ____lnlamp_error_amp_final__.res
+    # 计算误差结果
+    python3 $lnlamp_dir/lnlamp_internal_calculate_errors.py ____lnlamp_error_double.res ____lnlamp_error_amp_final__.res > ____lnlamp_amp_final_error_temp_use.log 2>&1 ;
+    if [ $? -ne 0 ]; then
+        echo "lnlamp: error: Calculate errors(lnlamp_internal_calculate_errors.py) problems encountered!"
+        exit
+    fi
+    rm -f ____lnlamp_error_double.res ____lnlamp_error_amp_final__.res
+
+    # 获取各种误差数据
+    dbl_no=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 1`;
+    amp_no=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 2 | tail -n 1`;
+    mean_err_prc=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 3 | tail -n 1`;
+    mean_err_abs=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 4 | tail -n 1`;
+    max_err_prc=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 5 | tail -n 1`;
+    max_err_abs=`cat ____lnlamp_amp_final_error_temp_use.log | head -n 6 | tail -n 1`;
+    rm -f ____lnlamp_amp_final_error_temp_use.log
+
+    # 根据类型确定最终结果的误差值
+    # 如果有非数，先不进行处理
+    if [ $ERROR_TYPE -eq 1 ]; then
+        amp_err=$max_err_abs
+    elif [ $ERROR_TYPE -eq 2 ]; then
+        amp_err=$max_err_prc
+    elif [ $ERROR_TYPE -eq 3 ]; then
+        amp_err=$mean_err_abs
+    elif [ $ERROR_TYPE -eq 4 ]; then
+        amp_err=$mean_err_prc
+    else
+        echo "lnlamp: error: ERROR_TYPE configuration errors!"
+        exit
+    fi
+    unset dbl_no
+    unset amp_no
+    unset mean_err_prc
+    unset mean_err_abs
+    unset max_err_prc
+    unset max_err_abs
+    
+    # 如果amp_err 大于 误差阈值，那么说明该结果的误差不符合要求。
+    if [ $(echo "$amp_err > $ERROR_THRESHOLD" | bc) -eq 1 ];
+    then
+        echo "lnlamp: error: The error of ${target_file} exceeds the error threshold($amp_err > $ERROR_THRESHOLD)!!!"
+        rm -f ${target_file}
+        exit
+    else
+        echo "The error of ${target_file} is $amp_err."
+    fi
+fi
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+echo ""
