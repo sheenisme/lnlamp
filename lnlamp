@@ -90,7 +90,7 @@ ERROR_TYPE=1
 # 是否指定error_threshold的Flags
 specify_error_threshold_flags=0
 err_thr=""
-ERROR_THRESHOLD=inf
+ERROR_THRESHOLD=99999999999999999999
 
 # Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
@@ -1847,7 +1847,7 @@ if [[ ${PROFILING_READY} = true ]]; then
     # 如果是二次抛物线，开口向上的情况
     elif [ ${amp_type} -eq -1 ];
     then
-        max_income=-inf
+        max_income=-60
         max_income_id=-1.0
         # 确定一下最大收益及其对应的下标
         for ((i=0;i<${#best_incomes[@]};i++));
