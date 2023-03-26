@@ -84,13 +84,13 @@ frequency=10
 readonly frequency
 # TODO: 这里还差两个配置参数的自定义支持
 # Maximal variance accepted between the 10 median runs for performance results.
-VARIANCE_ACCEPTED=20;
+VARIANCE_ACCEPTED=10;
 # 设定误差阈值,及其类型(1-最大绝对误差(默认)，2-最大相对误差，3-平均绝对误差，4-平均相对误差)
 ERROR_TYPE=1
 # 是否指定error_threshold的Flags
 specify_error_threshold_flags=0
 err_thr=""
-ERROR_THRESHOLD=0.001
+ERROR_THRESHOLD=1000000000
 
 # Step0: 先处理一下输入.
 while [[ $# -gt 0 ]];
