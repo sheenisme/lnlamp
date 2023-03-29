@@ -1917,6 +1917,39 @@ fi
 # Step5: 验证结果程序的误差情况.
 # 
 if [[ ${FINAL_RESULT_READY} = true ]] ; then
+    # 如果指定了rate_array，那么误差模型不会获取double的结果，需要在这里编译和执行并获取double的误差情况.
+    if [ $specify_rate_array_flag -gt 1 ];
+    then
+        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: PPCG Codegen meets errors."
+            echo "lnlamp: error: The PPCG CMD is : ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ____lnlamp_ppcg__${prf_suf} "
+            exit
+        fi
+        ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg_double__.exe ${EXIT_FLAGS} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "lnlamp: error: Compiling meets errors."
+            echo "lnlamp: error: The compiler CMD is : ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} -DDATA_TYPE_IS_DOUBLE=1 ____lnlamp_ppcg__${prf_suf} -o  ____lnlamp_ppcg_double__.exe ${EXIT_FLAGS}"
+            exit
+        fi
+        rm -f ____lnlamp_ppcg__${prf_suf}
+
+        # 执行程序，获取计算结果
+        if [ -e $input ];
+        then
+            { ./____lnlamp_ppcg_double__.exe < $input 2> ____lnlamp_error_double.res > /dev/null; } 2> /dev/null
+        else
+            { ./____lnlamp_ppcg_double__.exe  2> ____lnlamp_error_double.res > /dev/null; } 2> /dev/null
+        fi
+        rm -f ____lnlamp_ppcg_double__.exe
+
+        # 删除非计算结果的那些字符串
+        sed -i "/==BEGIN DUMP_ARRAYS==/d"  ____lnlamp_error_double.res
+        sed -i "/==END   DUMP_ARRAYS==/d"  ____lnlamp_error_double.res
+        sed -i "/begin dump/d"             ____lnlamp_error_double.res 
+        sed -i "/end   dump/d"             ____lnlamp_error_double.res
+    fi
+
     # 并行地编译amp最终的代码
     ${VERBOSE} ${CC} ${CFLAGS} ${LIB_FLAGS} ${PROFILER_FLAGS} ${target_file} -o  ____lnlamp_amp_final_res__.exe ${EXIT_FLAGS} > /dev/null 2>&1
     if [ $? -ne 0 ]; then
@@ -1939,6 +1972,11 @@ if [[ ${FINAL_RESULT_READY} = true ]] ; then
     sed -i "/==END   DUMP_ARRAYS==/d"  ____lnlamp_error_amp_final__.res
     sed -i "/begin dump/d"             ____lnlamp_error_amp_final__.res 
     sed -i "/end   dump/d"             ____lnlamp_error_amp_final__.res
+    
+    #如果double的结果文件不存在，则直接退出程序
+    if [ ! -e "____lnlamp_error_double.res" ]; then
+        echo "lnlamp: error: Can't calculate the final error result, because lnlamp_error_double.res is not exist!!!"
+    fi
     # 计算误差结果
     python3 $lnlamp_dir/lnlamp_internal_calculate_errors.py ____lnlamp_error_double.res ____lnlamp_error_amp_final__.res > ____lnlamp_amp_final_error_temp_use.log 2>&1 ;
     if [ $? -ne 0 ]; then
