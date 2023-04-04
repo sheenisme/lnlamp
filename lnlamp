@@ -1768,13 +1768,7 @@ if [[ ${PROFILING_READY} = true ]]; then
         best_incomes+=( $income )
         unset income
     done
-    end=`date +%s%N`
-    time_inference=$((($end-$start)/1000000)) # 毫秒
-    # 打印耗时情况
-    if [ $DEBUG_TYPE -eq 1 ];then
-        echo "lnlamp: message: The profiling timeConsuming is: ${time_profiling}ms, the error caluting timeConsuming is: ${time_error}ms, the inference timeConsuming is: ${time_inference}ms. "
-        echo ""
-    fi
+    echo ""
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 
@@ -1796,10 +1790,10 @@ if [[ ${PROFILING_READY} = true ]]; then
         fi
         echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
 
-        # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-        # 临时加一个语句，生成只进行mix的版本
-        ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1  
+        # # 临时加一个语句，生成schedule+mix的版本
+        # ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # # 临时加一个语句，生成只进行mix的版本
+        # ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1  
     # 如果是单调下降的情况
     elif [ ${amp_type} -eq 1 ];
     then
@@ -1814,10 +1808,10 @@ if [[ ${PROFILING_READY} = true ]]; then
         echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
         FINAL_RESULT_READY=true
 
-        # 临时加一个语句，生成schedule+mix的版本
-        ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-        # 临时加一个语句，生成只进行mix的版本
-        ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+        # # 临时加一个语句，生成schedule+mix的版本
+        # ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+        # # 临时加一个语句，生成只进行mix的版本
+        # ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
     # 如果是二次抛物线，开口向下的情况
     elif [ ${amp_type} -eq 0 ];
     then
@@ -1834,10 +1828,10 @@ if [[ ${PROFILING_READY} = true ]]; then
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[@]}). "
             FINAL_RESULT_READY=true
 
-            # 临时加一个语句，生成schedule+mix的版本
-            ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-            # 临时加一个语句，生成只进行mix的版本
-            ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+            # # 临时加一个语句，生成schedule+mix的版本
+            # ppcg --target c -R ${best_rate[@]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # # 临时加一个语句，生成只进行mix的版本
+            # ppcg --target c -R ${best_rate[@]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
         else
             echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
             # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1849,10 +1843,10 @@ if [[ ${PROFILING_READY} = true ]]; then
             fi
             echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
             
-            # 临时加一个语句，生成schedule+mix的版本
-            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-            # 临时加一个语句，生成只进行mix的版本
-            ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+            # # 临时加一个语句，生成schedule+mix的版本
+            # ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # # 临时加一个语句，生成只进行mix的版本
+            # ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
         fi
     # 如果是二次抛物线，开口向上的情况
     elif [ ${amp_type} -eq -1 ];
@@ -1882,10 +1876,10 @@ if [[ ${PROFILING_READY} = true ]]; then
             echo "Now, We have automatically generated a mixed precision program (${target_file})at this Ratio(${best_rate[$max_income_id]}). "
             FINAL_RESULT_READY=true
 
-            # 临时加一个语句，生成schedule+mix的版本
-            ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-            # 临时加一个语句，生成只进行mix的版本
-            ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+            # # 临时加一个语句，生成schedule+mix的版本
+            # ppcg --target c -R ${best_rate[$max_income_id]} ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # # 临时加一个语句，生成只进行mix的版本
+            # ppcg --target c -R ${best_rate[$max_income_id]} --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
         else
             echo "Unfortunately, we did not find the most suitable mixed precision Rate for this program. So the original program is probably the best. "
             # 生成没有进行混合精度，但是PPCG优化后的代码提供给用户
@@ -1897,18 +1891,20 @@ if [[ ${PROFILING_READY} = true ]]; then
             fi
             echo "Now, We have automatically generated a program (${target_file}) with PPCG for you. "
             
-            # 临时加一个语句，生成schedule+mix的版本
-            ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
-            # 临时加一个语句，生成只进行mix的版本
-            ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
+            # # 临时加一个语句，生成schedule+mix的版本
+            # ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${target_file}.no-tile.c > /dev/null 2>&1
+            # # 临时加一个语句，生成只进行mix的版本
+            # ppcg --target c --no-automatic-mixed-precision --no-reschedule $src_args -o ${target_file}.only-mix.c > /dev/null 2>&1
         fi
     else
         echo "lnlamp: error: There was a problem printing the final results, please contact the program developer! "
     fi
+    end=`date +%s%N`
+    time_inference=$((($end-$start)/1000000)) # 毫秒
 
-    # 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
-    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
-    ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
+    # # 最后生成PPCG进行调度优化之后的原始精度的代码（默认tile,以及no-tile），以方便做实验时进行对比（注意该部分只是为了实验测试方便而已）。
+    # ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_TILE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.c > /dev/null 2>&1
+    # ppcg --target c --no-automatic-mixed-precision ${PPCG_ISL_FLAGS} ${PPCG_SCHEDULE_FLAGS} ${PPCG_OPENMP_FLAGS} $src_args -o ${src_args}.ppcg.no-tile.c > /dev/null 2>&1
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 fi
 
@@ -1917,6 +1913,9 @@ fi
 # Step5: 验证结果程序的误差情况.
 # 
 if [[ ${FINAL_RESULT_READY} = true ]] ; then
+    # 使用 date +%s%N 可以获得一个纳秒级的unix时间戳(当前时间), 进行计时
+    start=`date +%s%N`
+
     # 如果指定了rate_array，那么误差模型不会获取double的结果，需要在这里编译和执行并获取double的误差情况.
     if [ $specify_rate_array_flag -gt 1 ];
     then
@@ -2024,6 +2023,16 @@ if [[ ${FINAL_RESULT_READY} = true ]] ; then
     else
         echo "The error of ${target_file} is $amp_err."
     fi
+
+    # 结束计时
+    end=`date +%s%N`
+    time_verify=$((($end-$start)/1000000)) # 毫秒
 fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 echo ""
+
+# 打印耗时情况
+if [ $DEBUG_TYPE -eq 1 ];then
+    echo "lnlamp: message: The error caluting timeConsuming is: ${time_error}ms, the profiling timeConsuming is: ${time_profiling}ms,  the inference timeConsuming is: ${time_inference}ms, the result verify time is: ${time_verify}ms. "
+    echo ""
+fi
