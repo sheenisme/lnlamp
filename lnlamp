@@ -35,7 +35,7 @@ timing_type=0
 input="input.txt"
 # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
 VERBOSE=""
-CC="/media/sheen/文件/ubuntu_code_data/llvm-project/llvm-install/bin/clang"
+CC="/home/sheen/llvm-project/llvm-install/bin/clang"
 CFLAGS="-O3"
 LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
 PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS -DPOLYBENCH_STACK_ARRAYS"
