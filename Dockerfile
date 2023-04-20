@@ -4,14 +4,10 @@ FROM ubuntu:20.04
 
 # install dependency
 ENV DEBIAN_FRONTEND noninteractive
-ENV TZ 'Asia/Shanghai' 
-ENV LANG en_US.UTF-8 
-ENV LANGUAGE en_US:en 
-ENV LC_ALL en_US.UTF-8
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN sed -i s@/security.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get update \
-    && apt-get install -y gcc g++ git vim make python python3-pip flex bison bc texinfo \
+    && apt-get install -y gcc g++ git vim make python python3-pip flex bison texinfo bc locales sudo\
     && apt install -y automake autoconf libtool pkg-config libgmp3-dev libyaml-dev libclang-dev llvm clang cmake
 RUN pip install pandas numpy matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple
 
@@ -89,6 +85,12 @@ ENV LD_LIBRARY_PATH /home/sheen/lnlamp-install/lib:$LD_LIBRARY_PATH
 
 ENV CPATH /home/sheen/lnlamp/polybench_benchmark/utilities:$CPATH
 ENV CPATH /usr/local/include:$CPATH
+
+# setting UTF-8
+ENV TZ 'Asia/Shanghai' 
+ENV LANG zh_CN.UTF-8
+ENV LANGUAGE "zh_CN.UTF-8"
+ENV LC_ALL C.UTF-8
 
 
 
