@@ -11,7 +11,7 @@ ENV LC_ALL en_US.UTF-8
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN sed -i s@/security.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get update \
-    && apt-get install -y gcc g++ git vim make python python3-pip flex bison texinfo \
+    && apt-get install -y gcc g++ git vim make python python3-pip flex bison bc texinfo \
     && apt install -y automake autoconf libtool pkg-config libgmp3-dev libyaml-dev libclang-dev llvm clang cmake
 RUN pip install pandas numpy matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple
 
