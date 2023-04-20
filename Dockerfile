@@ -4,6 +4,10 @@ FROM ubuntu:20.04
 
 # install dependency
 ENV DEBIAN_FRONTEND noninteractive
+ENV TZ 'Asia/Shanghai' 
+ENV LANG en_US.UTF-8 
+ENV LANGUAGE en_US:en 
+ENV LC_ALL en_US.UTF-8
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN sed -i s@/security.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get update \
@@ -18,7 +22,7 @@ ARG user=sheen
 RUN useradd --create-home --no-log-init --shell /bin/bash ${user} \
     && adduser ${user} sudo   \
     && echo "${user}:1" | chpasswd
-RUN usermod -u 1000 ${user} && usermod -G 1000 ${user}
+# RUN usermod -u 1000 ${user} && usermod -G 1000 ${user}
 USER ${user}
 
 
