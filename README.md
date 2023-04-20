@@ -1,15 +1,69 @@
-循环嵌套级自动混合精度(Loop nesting level automatic mixed precision, LNLAMP)[ https://gitee.com/sheenisme/lnlamp.git ],是在AMPO-SC[ https://gitee.com/sheenisme/ppcg.git ]的基础上进一步发展而来的自动混合精度优化器。其核心是利用多面体编译技术对循环嵌套进行自动混合精度优化，比ampo-sc的应用范围更广。
+We presents a holistic approach–`PrecTuner`–by closely coupling the code generator and the autotuner via only one parameter $r$ . Initialized by automatically sampled values, $r$ is first used to generate several code variants in the polyhedral model, combining this optimization with loop transformations. These code variants are then used to solve a performance model expressed in terms of $r$ , possibly under a quality degradation budget. The value of $r$ that produces the best-performing mixed-precision code is finally predicted without evaluating all code variants. 
+
+As for the computational artifact of this work([https://github.com/sheenisme/lnlamp.git](https://github.com/sheenisme/lnlamp.git)), it implements automatic code generation based on PPCG([http://ppcg.gforge.inria.fr/](http://ppcg.gforge.inria.fr/)), and on Python and Shell scripts for automatic tuning, which closely coupling the code generator and the autotuner via only one parameter $r$ . 
+
+**The usage of `PrecTuner` is as follows:**
+---
+
+```
+Usage: lnlamp file [options] ...
+
+Options:
+  -s|--specify-output   specify the target file
+  -r|--rate-array       specify the rate-array of profiling (default is:0 12 25 37 50 62 75 87 99)
+  -e|--error-threshold  specify the error-threshold (default is:99999999999999999999)
+  -v|--version          lnlamp version
+  -t|--tile             lnlamp specify the tile-sizes(default none) in PPCG
+  -o|--openmp           lnlamp specify uses the --openmp in PPCG, and multi-threads(default is:4) running.
+  -a|--sched-algo       lnlamp specify the schedule-algorithm to isl|feautrier|no in PPCG, default is isl
+  -i|--isl-flags        lnlamp specify the flags in isl library of PPCG,default is null
+
+Examples:
+  lnlamp hello.c -s hello_lnlamp.c
+
+Template:
+  lnlamp <source-file> [Options] <target-file>
+```
+
+It is worth mentioning that all the experimental data in this article were obtained using this tool. In order to better test our method, we embedded the experimental test sub-module (polybench_benchmark) in this tool and encapsulated the testing process into a corresponding script so that our peers can quickly reproduce our experimental process.
+
+So, To reproduce the data in the SC paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
+
+**installing the `PrecTuner`** :
+---
+
+```shell
+# prepare
+sudo apt update && sudo apt upgrade -y
+sudo apt-get install gcc g++ git vim make python python3-pip
+sudo apt install automake autoconf libtool pkg-config libgmp3-dev libyaml-dev libclang-dev llvm clang
+pip install pandas numpy matplotlib
+
+cd /home/sheen/
+mkdir lnlamp-install
+git clone https://github.com/sheenisme/lnlamp.git
+
+cd lnlamp/
+./get_submodules.sh 
+./autogen.sh 
+./configure --prefix=/home/sheen/lnlamp-install
+
+make
+make install
+```
+
+For further installation help please refer to: https://repo.or.cz/ppcg.git.
+
+ **`Docker`** :
+---
+
+we provide a `Dockerfile`([https://github.com/sheenisme/lnlamp/blob/master/Dockerfile](https://github.com/sheenisme/lnlamp/blob/master/Dockerfile)) file for quick installation, but this installation is not recommended given the instability of performance testing in virtual machines.
 
 
-Notes:
-1. 安装PPCG教程(该工具基于ppcg实现),详见链接: https://zhuanlan.zhihu.com/p/360210690, PPCG开源网址: http://ppcg.gforge.inria.fr/.
-2. 为了方便国内外的学者和用户一起研究和学习，该仓库同步更新于gitee[ https://gitee.com/sheenisme/lnlamp.git ]和github[ https://github.com/sheenisme/lnlamp.git ]。
-3. polybench_benchmark是测试该优化器的开源代码仓库,有关测试的详细信息,请参见该代码仓库[ gitee: https://gitee.com/sheenisme/polybench_benchmark.git or github : https://github.com/sheenisme/polybench_benchmark.git ].
-4. 推送本地代码分支到远端代码分支:
-	git push <远程主机名> <本地分支名>:<远程分支名>
-	eg: git push origin master
+**PPCG descriptions**:
+---
 
-以下是原作者的说明(The following is the original author's description):
+*The following is the ppcg author's description:*
 Requirements:
 
 - automake, autoconf, libtool
