@@ -167,9 +167,9 @@ void amp_array_ref_group_dump(struct amp_array_ref_group *group) {
         fprintf(stderr, "          the    access        is: \n");
         isl_map_dump(group->access);
         fprintf(stderr, "          the  shared_tile     is: \n");
-        amp_array_tile_dump(group->shared_tile);
+        // amp_array_tile_dump(group->shared_tile);
         fprintf(stderr, "          the     array        is: \n");
-        amp_array_info_dump(group->array);
+        // amp_array_info_dump(group->array);
         // fprintf(stderr, "          the    local_array   is: \n");
         // amp_local_array_info_dump(group->local_array);
     } else {
@@ -2029,6 +2029,8 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
     // }
 
     tile = amp_array_ref_group_tile(group);
+    if (!tile)
+        return node;
 #ifdef DEBUG_AMP_ADD_COPIES_GROUP_SHARED
     fprintf(stderr, "\n\n\n@DEBUG \n       the tile of group in amp_add_copies_group function is: \n");
     if (tile)
@@ -2093,14 +2095,14 @@ static __isl_give isl_schedule_node *amp_add_copies_group_shared(
 #endif // DEBUG_AMP_ADD_COPIES_GROUP
     }
 
-    else {
-        ma = isl_multi_aff_copy(from_access);
-#ifdef DEBUG_AMP_ADD_COPIES_GROUP
-        fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
-        isl_multi_aff_dump(ma);
-        fprintf(stderr, "\n\n");
-#endif // DEBUG_AMP_ADD_COPIES_GROUP
-    }
+//     else {
+//         ma = isl_multi_aff_copy(from_access);
+// #ifdef DEBUG_AMP_ADD_COPIES_GROUP
+//         fprintf(stderr, "@DEBUG: \n       the ma(from_access) is: \n");
+//         isl_multi_aff_dump(ma);
+//         fprintf(stderr, "\n\n");
+// #endif // DEBUG_AMP_ADD_COPIES_GROUP
+//     }
 
     mpa = isl_multi_pw_aff_from_multi_aff(ma);
 
@@ -3239,8 +3241,8 @@ static isl_stat compute_group_bounds_core(struct amp_ppcg_kernel *kernel,
     int requires_unroll;
     int unique_depth;
 
-    if (!use_shared && !use_private)
-        return isl_stat_ok;
+    // if (!use_shared && !use_private)
+    //     return isl_stat_ok;
     // if (amp_array_is_read_only_scalar(group->array))
     //     return isl_stat_ok;
     if (!group->exact_write)
@@ -3962,13 +3964,13 @@ static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel) {
         struct amp_local_array_info *array = &kernel->array[i];
 
         for (j = 0; j < array->n_group; ++j) {
-            // struct amp_array_ref_group *group = array->groups[j];
-            // enum ppcg_group_access_type type;
+            struct amp_array_ref_group *group = array->groups[j];
+            enum ppcg_group_access_type type;
 
-            // type = amp_array_ref_group_type(group);
-            // if (type != ppcg_access_global)
-            // ++n;
-            ++n;
+            type = amp_array_ref_group_type(group);
+            if (type != ppcg_access_global)
+                ++n;
+            //++n;
         }
     }
 
@@ -3986,8 +3988,8 @@ static isl_stat create_amp_kernel_vars(struct amp_ppcg_kernel *kernel) {
             enum ppcg_group_access_type type;
 
             type = amp_array_ref_group_type(group);
-            // if (type == ppcg_access_global)
-            //     continue;
+            if (type == ppcg_access_global)
+                continue;
             create_amp_kernel_var(kernel->ctx, group, &kernel->var[n]);
             ++n;
         }
@@ -4280,10 +4282,10 @@ static void amp_array_ref_group_compute_tiling(struct amp_array_ref_group *group
     tile = amp_array_ref_group_tile(group);
     if (!tile) {
         // fprintf(stderr, "@WARN_INFO: \n       in the amp_array_ref_group_compute_tiling        function, the tile of group is null !!! please notice! the group is:         \n");
-        fprintf(stderr, "@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
-        amp_array_ref_group_dump(group);
+        // fprintf(stderr, "@WARN_INFO: \n       in the         amp_array_ref_group_compute_tiling function, the tile of group is null         !!! please notice! the group is: \n");
+        // amp_array_ref_group_dump(group);
         // amp_array_tile_dump(tile);
-        fprintf(stderr, "\n\n");
+        // fprintf(stderr, "\n\n");
         return;
     }
 #ifdef DEBUG_AMP_ARRAY_REFGROUP_COMPUTE_TILING
