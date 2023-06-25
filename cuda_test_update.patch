@@ -1,0 +1,63 @@
+diff --git a/cpu.c b/cpu.c
+index abffd20..2b0fa9f 100644
+--- a/cpu.c
++++ b/cpu.c
+@@ -2347,7 +2347,11 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
+ 	p = isl_printer_print_str(p, "/* ppcg generated CPU code with AMP */");
+ 	p = isl_printer_end_line(p);
+ 
+-	// p = isl_printer_start_line(p);
++    p = isl_printer_start_line(p);
++    p = isl_printer_print_str(p, "#pragma scop");
++    p = isl_printer_end_line(p);
++
++    // p = isl_printer_start_line(p);
+ 	// p = isl_printer_print_str(p, "#define ppcg_min(x,y)    (x < y ? x : y)");
+ 	// p = isl_printer_end_line(p);
+ 
+@@ -2381,7 +2385,12 @@ static __isl_give isl_printer *print_cpu_with_amp(__isl_take isl_printer *p, __i
+ 
+ 	// 用完释放掉amp_prog
+ 	amp_prog_free(prog);
+-	return p;
++
++    p = isl_printer_start_line(p);
++    p = isl_printer_print_str(p, "#pragma endscop");
++    p = isl_printer_end_line(p);
++    
++    return p;
+ }
+ 
+ /* Generate CPU code for "scop" and print it to "p".
+diff --git a/isl b/isl
+--- a/isl
++++ b/isl
+@@ -1 +1 @@
+-Subproject commit f7b0ef95845d57fc839090d5075b84fa706eeb15
++Subproject commit f7b0ef95845d57fc839090d5075b84fa706eeb15-dirty
+diff --git a/lnlamp b/lnlamp
+index a031824..2b988e7 100755
+--- a/lnlamp
++++ b/lnlamp
+@@ -37,7 +37,7 @@ timing_type=0
+ input="input.txt"
+ # TODO: 完善下面 Profiling时编译的一些参数的自定义设置(CC已经实现根据后缀名字自动确定)
+ VERBOSE=""
+-CC="/home/sheen/llvm-project/llvm-install/bin/clang"
++CC="clang"
+ CFLAGS="-O3"
+ LIB_FLAGS="-I. -I/home/sheen/lnlamp/polybench_benchmark/utilities /home/sheen/lnlamp/polybench_benchmark/utilities/polybench.c"
+ PROFILER_FLAGS="-DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS -DPOLYBENCH_STACK_ARRAYS"
+diff --git a/pet b/pet
+--- a/pet
++++ b/pet
+@@ -1 +1 @@
+-Subproject commit c8adf54b904c7b293d0400d80cb6f21249a5a1cd
++Subproject commit c8adf54b904c7b293d0400d80cb6f21249a5a1cd-dirty
+diff --git a/polybench_benchmark b/polybench_benchmark
+index f3f5f16..5684a51 160000
+--- a/polybench_benchmark
++++ b/polybench_benchmark
+@@ -1 +1 @@
+-Subproject commit f3f5f16270739ce796ee5b1ed5359cf228ccb45a
++Subproject commit 5684a51ccbed00dd0f7d8274482c5a06c86ad537-dirty
