@@ -1,15 +1,5 @@
 We presents a holistic approach–`PrecTuner`–by closely coupling the code generator and the autotuner via only one parameter $r$ . Initialized by automatically sampled values, $r$ is first used to generate several code variants in the polyhedral model, combining this optimization with loop transformations. These code variants are then used to solve a performance model expressed in terms of $r$ , possibly under a quality degradation budget. The value of $r$ that produces the best-performing mixed-precision code is finally predicted without evaluating all code variants. 
 
-As for the computational artifact of this work([https://github.com/sheenisme/lnlamp.git](https://github.com/sheenisme/lnlamp.git)), it implements automatic code generation based on PPCG([http://ppcg.gforge.inria.fr/](http://ppcg.gforge.inria.fr/)), and on Python and Shell scripts for automatic tuning, which closely coupling the code generator and the autotuner via only one parameter $r$ . 
-
-
- **`Docker`** :
----
-
-we provide a `Dockerfile`([https://github.com/sheenisme/lnlamp/blob/master/Dockerfile](https://github.com/sheenisme/lnlamp/blob/master/Dockerfile)) file for quick installation.
-
-Note that we recommend using the Dockerfile to install and use our environment, even if you want to experiment on a local machine to get stable performance data, the installation steps are recommended to follow the steps described in the dockerfile, and if you want to use a custom path, it is currently recommended to use a soft link(`ln -s /your_dir /home/sheen`) for the purpose.
-
 **The usage of `PrecTuner` is as follows:**
 ---
 
@@ -35,9 +25,7 @@ Template:
 
 It is worth mentioning that all the experimental data in this article were obtained using this tool. In order to better test our method, we embedded the experimental test sub-module (polybench_benchmark) in this tool and encapsulated the testing process into a corresponding script so that our peers can quickly reproduce our experimental process.
 
-So, To reproduce the data in the paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
-
-**install the `PrecTuner` separately** :
+**Install the `PrecTuner` separately** :
 ---
 
 ```shell
@@ -62,6 +50,37 @@ make install
 
 For further installation help please refer to: https://repo.or.cz/ppcg.git.
 
+**`Docker`** :
+---
+We provide a \texttt{dockerfile}(\url{https://github.com/sheenisme/lnlamp/blob/master/Dockerfile}) file for quick installation, but this installation is not recommended given the instability of performance testing in virtual machines.
+
+It is important to note that we \textbf{highly recommend using the Dockerfile to install and use our environment}, even if you want to experiment on a local machine(the operating system we recommend is Ubuntu 20.04.5 LTS - Linux 5.15.0-67-generic) to get stable performance data, the installation steps are recommended to follow the steps described in the dockerfile, and if you want to use a custom path, it is currently recommended to use a soft link(`\texttt{ln -s /your\_dir /home/sheen}`) for the purpose.
+We provide a `Dockerfile`([https://github.com/sheenisme/lnlamp/blob/master/Dockerfile](https://github.com/sheenisme/lnlamp/blob/master/Dockerfile)) file for quick installation.
+
+**Reproducing our experiments** :
+---
+
+System configuration:
+```
+  Cpu   : Intel i5 processor (recommended)
+  Gpu   : NVIDIA RTX 2070    (recommended)
+  Os    : Ubuntu 20.04.5 LTS (recommended)
+  Gcc   : 9.4.0  (recommended)
+  Clang : 12.0.1 (recommended)
+  Memory: Recommended 32G and above
+  Disk  : Greater than 256G (artifact need about 124G)
+```
+As for the computational artifact of this work([https://github.com/sheenisme/lnlamp.git](https://github.com/sheenisme/lnlamp.git)), it implements automatic code generation based on PPCG([http://ppcg.gforge.inria.fr/](http://ppcg.gforge.inria.fr/)), and on Python and Shell scripts for automatic tuning, which closely coupling the code generator and the autotuner via only one parameter $r$ .
+
+So, To reproduce the data in the paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
+
+And, the Artifact is publicly available on 10.5281/zenodo.10275776: https://zenodo.org/records/10275776. 
+
+Note: The default installation path for all tools in this version of artifact is under '/home/sheen' and there is hard code for this path in the script code, we recommend soft linking your custom folder to '/home/sheen' so you can use it quickly and correctly. We also recommend that all users try installing with a dockerfile first, so that even if you have to install locally, you can refer to the docker image for help with some issues.
+
+---
+---
+---
 
 **PPCG descriptions**:
 ---
