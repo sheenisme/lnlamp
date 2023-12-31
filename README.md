@@ -2,6 +2,14 @@ We presents a holistic approach–`PrecTuner`–by closely coupling the code gen
 
 As for the computational artifact of this work([https://github.com/sheenisme/lnlamp.git](https://github.com/sheenisme/lnlamp.git)), it implements automatic code generation based on PPCG([http://ppcg.gforge.inria.fr/](http://ppcg.gforge.inria.fr/)), and on Python and Shell scripts for automatic tuning, which closely coupling the code generator and the autotuner via only one parameter $r$ . 
 
+
+ **`Docker`** :
+---
+
+we provide a `Dockerfile`([https://github.com/sheenisme/lnlamp/blob/master/Dockerfile](https://github.com/sheenisme/lnlamp/blob/master/Dockerfile)) file for quick installation.
+
+Note that we recommend using the Dockerfile to install and use our environment, even if you want to experiment on a local machine to get stable performance data, the installation steps are recommended to follow the steps described in the dockerfile, and if you want to use a custom path, it is currently recommended to use a soft link(`ln -s /your_dir /home/sheen`) for the purpose.
+
 **The usage of `PrecTuner` is as follows:**
 ---
 
@@ -29,7 +37,7 @@ It is worth mentioning that all the experimental data in this article were obtai
 
 So, To reproduce the data in the paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
 
-**installing the `PrecTuner`** :
+**install the `PrecTuner` separately** :
 ---
 
 ```shell
@@ -53,11 +61,6 @@ make install
 ```
 
 For further installation help please refer to: https://repo.or.cz/ppcg.git.
-
- **`Docker`** :
----
-
-we provide a `Dockerfile`([https://github.com/sheenisme/lnlamp/blob/master/Dockerfile](https://github.com/sheenisme/lnlamp/blob/master/Dockerfile)) file for quick installation, but this installation is not recommended given the instability of performance testing in virtual machines.
 
 
 **PPCG descriptions**:
