@@ -27,7 +27,7 @@ Template:
 
 It is worth mentioning that all the experimental data in this article were obtained using this tool. In order to better test our method, we embedded the experimental test sub-module (polybench_benchmark) in this tool and encapsulated the testing process into a corresponding script so that our peers can quickly reproduce our experimental process.
 
-So, To reproduce the data in the SC paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
+So, To reproduce the data in the paper, see the code repository-polybench_benchmark(https://github.com/sheenisme/polybench_benchmark.git)
 
 **installing the `PrecTuner`** :
 ---
@@ -35,7 +35,7 @@ So, To reproduce the data in the SC paper, see the code repository-polybench_ben
 ```shell
 # prepare
 sudo apt update && sudo apt upgrade -y
-sudo apt-get install gcc g++ git vim make python python3-pip
+sudo apt-get install gcc g++ git vim make bc python python3-pip
 sudo apt install automake autoconf libtool pkg-config libgmp3-dev libyaml-dev libclang-dev llvm clang
 pip install pandas numpy matplotlib
 
